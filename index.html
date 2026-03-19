@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>文档图像处理工具</title>
+  <!-- 预加载样式表防止 FOUC -->
+  <link rel="preload" href="/css/main.css" as="style">
+  <link rel="preload" href="/css/layout.css" as="style">
+  <link rel="preload" href="/css/components.css" as="style">
+  <!-- 隐藏 body 直到样式加载完成 -->
+  <style>
+    body { visibility: hidden; }
+    body.loaded { visibility: visible; }
+  </style>
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="/css/layout.css">
+  <link rel="stylesheet" href="/css/components.css">
+  <script>
+    // 标记样式已加载
+    window.addEventListener('load', function() {
+      document.body.classList.add('loaded');
+    });
+  </script>
+</head>
+<body>
+  <div id="app">
+    <!-- 三栏布局 -->
+    <div class="layout-container">
+      <!-- 左侧：任务列表 -->
+      <div class="sidebar-left">
+        <div class="task-panel">
+          <h2>任务管理</h2>
+          <div class="task-controls">
+            <input type="text" id="taskIdInput" placeholder="输入任务号">
+            <button id="importBtn">导入文件夹</button>
+            <input type="file" id="folderInput" webkitdirectory directory style="display: none;">
+          </div>
+          <div class="image-list" id="imageList">
+            <!-- 图片列表将动态生成 -->
+          </div>
+        </div>
+      </div>
+
+      <!-- 中间：正在处理（主视图） -->
+      <div class="main-content">
+        <div class="processing-panel main-panel">
+          <h3>正在处理</h3>
+          <div class="image-wrapper main-image-wrapper">
+            <canvas id="processedCanvas" width="600" height="800"></canvas>
+          </div>
+          
+          <div class="progress-bar" id="progressBar" style="display: none;">
+            <div class="progress-fill"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右侧：原始图片（缩略图）+ 工具栏 -->
+      <div class="sidebar-right">
+        <div class="image-display-container thumbnail-panel">
+          <h3>原始图片</h3>
+          <div class="image-wrapper thumbnail-wrapper">
+            <img id="originalImage" src="" alt="原始图片">
+          </div>
+        </div>
+        
+        <div class="toolbar toolbar-bottom">
+          <div class="tool-group">
+            <button id="rotate180Btn" title="旋转180° (B)">↻180°</button>
+          </div>
+          
+          <div class="tool-group">
+            <button id="rotateLeftBtn" title="左转90° (R)">↺90°</button>
+            <button id="rotateRightBtn" title="右转90° (T)">↻90°</button>
+          </div>
+          
+          <div class="tool-group">
+            <span id="skewAngleDisplay">倾斜角度: 0°</span>
+          </div>
+          <div class="tool-group">
+            <button id="skewLeftBtn" title="向左倾斜 (W)">←倾斜</button>
+            <button id="skewRightBtn" title="向右倾斜 (E)">→倾斜</button>
+          </div>
+          
+          <div class="tool-group">
+            <button id="cropBtn" title="手动裁剪 (S)">裁剪</button>
+          </div>
+          
+          <div class="tool-group">
+            <button id="undoBtn" title="撤销 (A)">撤销</button>
+            <button id="resetBtn" title="原图替换 (Z)">重置</button>
+          </div>
+          
+          <div class="tool-group">
+            <button id="autoCorrectBtn">自动校正</button>
+          </div>
+          
+          <div class="toolbar-divider"></div>
+          
+          <div class="tool-group">
+            <button id="selectRegionBtn">框选</button>
+            <button id="autoRemoveBorderBtn">自动去黑边</button>
+            <button id="autoCleanBtn">自动去污</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OpenCV.js 从本地加载，添加防重复加载保护 -->
+  <script>
+    // 全局标记，防止重复加载
+    window.__opencvLoaded = false;
+    window.__opencvReadyCalled = false;
+    
+    // OpenCV.js 加载完成后的回调
+    window.onOpenCvReady = function() {
+      // 防止重复调用
+      if (window.__opencvReadyCalled) {
+        console.warn('OpenCV.js 已加载，跳过重复初始化');
+        return;
+      }
+      window.__opencvReadyCalled = true;
+      
+      console.log('OpenCV.js 加载完成');
+      
+      // 等待 OpenCV 运行时初始化
+      if (typeof cv !== 'undefined' && cv.Mat) {
+        console.log('OpenCV.js 已就绪');
+        window.dispatchEvent(new CustomEvent('opencv-ready'));
+      } else if (typeof cv !== 'undefined') {
+        // 如果 cv 存在但未初始化完成，等待运行时初始化
+        cv['onRuntimeInitialized'] = function() {
+          console.log('OpenCV.js 运行时已就绪');
+          window.dispatchEvent(new CustomEvent('opencv-ready'));
+        };
+      }
+    };
+  </script>
+  <!-- 检查 OpenCV 是否已加载，防止重复加载 -->
+  <script>
+    if (!window.__opencvLoaded) {
+      window.__opencvLoaded = true;
+    }
+  </script>
+  <script async src="/lib/opencv/opencv.js" onload="window.onOpenCvReady()"></script>
+  <script type="module" src="/assets/js/main-controller.js"></script>
+</body>
+</html>
