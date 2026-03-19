@@ -1,0 +1,17 @@
+{
+  "name": "img2easy",
+  "version": "1.0.0",
+  "description": "纯前端文档图像处理工具",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+ "keywords": ["image-processing", "document", "opencv", "frontend"],
+  "author": "img2easy",
+  "license": "MIT",
+  "devDependencies": {
+    "vite": "^4.0.0"
+  }
+}
