@@ -1,202 +1,57 @@
-# 文档图像处理工具 (img2easy)
+# img2easy Pro
 
-一个纯前端的文档图像处理工具，支持旋转校正、黑边消除、边缘清理和污渍去除等功能。
-
-## ⚠️ 实验项目说明
-
-**重要提示：这是一个实验性质的项目，仍在积极开发中。**
-
-特别需要注意的是，自动去污功能目前还不够完善，可能无法很好地处理各种类型的污渍。我们正在寻求社区的帮助来改进这一功能，欢迎贡献更好的算法和解决方案！
+文档图像处理工具 - 商业级桌面应用
 
 ## 功能特性
 
-### 核心功能
-
-1. **旋转校正** (`angle_correct`)
-   - 使用霍夫变换检测直线
-   - 自动计算平均角度进行旋转校正
-   - 支持RANSAC算法提高鲁棒性
-
-2. **黑边消除** (`border_remover`)
-   - 智能检测图像四边的黑边
-   - 支持轮廓检测方法
-   - 自动裁剪黑边区域
-
-3. **边缘清理** (`clean_edge`)
-   - 基于灰度分析的边缘检测
-   - 滑动窗口方法提高精度
-   - 自动裁剪不需要的边缘
-
-4. **污渍去除** (`document_cleaner`)
-   - 多特征评分系统识别污渍
-   - 支持实心度、圆形度、紧凑度等特征
-   - 使用inpainting算法修复污渍区域
-   - **注意：此功能仍在实验阶段，效果可能因图像而异**
-
-### 快捷键支持
-
-| 快捷键 | 功能 |
-|--------|------|
-| B | 旋转180° |
-| R | 左转90° |
-| T | 右转90° |
-| S | 手动裁剪 |
-| W | 向左倾斜 |
-| E | 向右倾斜 |
-| A | 撤销 |
-| Z | 重置为原图 |
+- **自动校正**：霍夫变换检测倾斜角度，自动旋转校正
+- **黑边消除**：智能轮廓检测，保留时标标记
+- **污渍清理**：多特征评分系统，inpaint 修复
+- **边缘裁剪**：灰度均值分析，自动裁剪
+- **批量处理**：串行/并行队列，进度跟踪
+- **导出报告**：PDF + Excel 双格式
+- **撤销重做**：命令模式，Mat 快照
 
 ## 技术栈
 
-- **前端框架**: Vanilla JavaScript (ES6+)
-- **图像处理**: OpenCV.js
-- **构建工具**: Vite
-- **并发处理**: Web Workers
+- Electron 28 + Vue 3 + TypeScript
+- OpenCV.js (WASM) 图像处理
+- Pinia 状态管理
+- Vitest 单元测试
 
-## 项目结构
-
-```
-img2easy/
-├── public/
-│   ├── index.html              # 主页面
-│   ├── css/
-│   │   ├── main.css           # 主样式
-│   │   ├── layout.css         # 布局样式
-│   │   └── components.css     # 组件样式
-│   └── assets/
-│       └── js/
-│           ├── core/           # 核心图像处理模块
-│           │   ├── image-processor.js
-│           │   ├── angle-corrector.js
-│           │   ├── border-remover.js
-│           │   ├── edge-cleaner.js
-│           │   └── document-cleaner.js
-│           ├── workers/        # Web Workers
-│           │   ├── image-processing-worker.js
-│           │   └── batch-processor-worker.js
-│           ├── ui/             # 用户界面模块
-│           │   ├── image-viewer.js
-│           │   └── toolbar-controller.js
-│           ├── utils/          # 工具函数
-│           │   ├── canvas-utils.js
-│           │   ├── file-handler.js
-│           │   ├── opencv-loader.js
-│           │   └── performance-monitor.js
-│           └── main-controller.js  # 主控制器
-├── src/
-│   └── js/
-├── package.json
-├── vite.config.js
-└── README.md
-```
-
-## 安装和运行
-
-### 前置要求
-
-- Node.js 16+
-- npm 或 yarn
-
-### 安装依赖
+## 安装
 
 ```bash
-npm install
+npm install --legacy-peer-deps --registry=https://registry.npmmirror.com
 ```
 
-### 开发模式
+## 开发
 
 ```bash
-npm run dev
+ELECTRON_DISABLE_SANDBOX=1 npm run dev
 ```
 
-### 生产构建
+## 构建
 
 ```bash
 npm run build
+npm run build:linux   # Linux dir package
+npm run build:win     # Windows nsis
+npm run build:mac     # macOS dmg
 ```
 
-### 预览生产版本
+## 测试
 
 ```bash
-npm run preview
+npm test
 ```
-
-## 使用说明
-
-1. **导入图片**
-   - 点击"导入文件夹"按钮选择包含图片的文件夹
-   - 或者输入任务号加载特定任务
-
-2. **处理图片**
-   - 选择左侧列表中的图片
-   - 使用工具栏按钮或快捷键进行操作
-   - 使用"自动校正"、"自动去黑边"、"自动去污"等功能进行一键处理
-
-3. **保存结果**
-   - 处理完成后，图片会显示在右侧面板
-   - 可以继续调整或保存结果
-
-## 核心算法说明
-
-### 旋转校正算法
-
-1. 转换为灰度图并高斯模糊
-2. 使用Canny边缘检测
-3. 霍夫变换检测直线
-4. 过滤并计算平均角度
-5. 执行仿射变换进行旋转校正
-
-### 黑边消除算法
-
-1. 灰度转换和二值化
-2. 检测四边的黑色像素分布
-3. 计算黑边边界
-4. 裁剪黑边区域
-
-### 污渍检测算法
-
-1. 形态学操作预处理
-2. 查找轮廓
-3. 计算轮廓特征（实心度、圆形度等）
-4. 评分判断是否为污渍
-5. 使用inpainting修复
-
-**注意：污渍检测算法仍在实验阶段，对于复杂背景或特殊类型的污渍可能效果不佳。我们欢迎社区贡献更先进的污渍检测和修复算法！**
-
-## 性能优化
-
-- 使用Web Workers进行后台图像处理
-- 支持多核CPU并行处理
-- 内存管理和及时释放
-- GPU加速（如果浏览器支持）
-
-## 浏览器支持
-
-- Chrome 80+
-- Firefox 75+
-- Safari 14+
-- Edge 80+
-
-## 社区贡献
-
-我们特别希望社区能够帮助改进以下方面：
-
-1. **自动去污算法** - 当前的污渍检测和修复算法仍有很大改进空间
-2. **准确性提升** - 提高各种图像处理功能的准确性和稳定性
-3. **新功能开发** - 添加更多实用的图像处理功能
-4. **性能优化** - 提升处理速度和内存使用效率
-
-如果您有相关经验并愿意贡献，请查看我们的代码并提交PR！
-
-## 开发计划
-
-- [ ] 批量处理功能
-- [ ] 注册机和硬件绑定
-- [ ] 更多图像处理功能
-- [ ] 处理历史记录
-- [ ] 导出处理报告
-- [ ] 改进自动去污算法
 
 ## 许可证
 
-MIT License
+- 试用版：7天免费
+- 标准版：一次性买断
+- 密钥格式：`XXXX-XXXX-XXXX-XXXX`
+
+## 仓库
+
+https://github.com/windAndLiberty/docimg2easy
