@@ -1,0 +1,21 @@
+appId: com.img2easy.pro
+productName: img2easy Pro
+directories:
+  output: dist_electron
+  buildResources: resources
+files:
+  - out/**/*
+  - public/**/*
+extraResources:
+  - from: public/lib/opencv
+    to: lib/opencv
+linux:
+  target:
+    - target: dir
+      arch: [x64]
+  category: Graphics
+  maintainer: img2easy
+  vendor: img2easy
+  synopsis: Document image processing tool
+  description: Professional document image processing with OpenCV
+  executableName: img2easy-pro

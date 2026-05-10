@@ -374,6 +374,7 @@ export const useImageStore = defineStore('image', () => {
     autoClean,
     setProgress,
     ensureMat,
-    matToDataUrl
+    matToDataUrl,
+    currentMats
   }
 })

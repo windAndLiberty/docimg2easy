@@ -83,7 +83,7 @@ export class ReportExporter {
       }
     }
 
-    return new Uint8Array(doc.output('arraybuffer') as ArrayBuffer)
+    return doc.output('arraybuffer') as unknown as Uint8Array
   }
 
   /**

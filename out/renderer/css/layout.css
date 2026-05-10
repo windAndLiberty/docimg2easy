@@ -1,0 +1,222 @@
+/* 三栏布局样式 */
+.layout-container {
+  display: flex;
+  height: 100vh;
+  width: 100%;
+}
+
+/* 左侧栏 - 任务列表 */
+.sidebar-left {
+  width: 250px;
+  min-width: 200px;
+  background-color: #fff;
+  border-right: 1px solid #ddd;
+  display: flex;
+  flex-direction: column;
+}
+
+.task-panel {
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.task-panel h2 {
+  font-size: 16px;
+  margin-bottom: 15px;
+  color: #333;
+}
+
+.task-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.task-controls input[type="text"] {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.image-list {
+  flex: 1;
+  overflow-y: auto;
+  border: 1px solid #eee;
+  border-radius: 4px;
+}
+
+/* 中间内容区 - 正在处理（主视图） */
+.main-content {
+  flex: 1;
+  background-color: #fafafa;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.main-panel {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.main-panel h3 {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 10px;
+}
+
+.main-image-wrapper {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: auto;
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  min-height: 600px;
+}
+
+.main-image-wrapper canvas {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+/* 右侧栏 - 原始图片（缩略图）+ 工具栏 */
+.sidebar-right {
+  width: 250px;
+  min-width: 200px;
+  background-color: #fff;
+  border-left: 1px solid #ddd;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.thumbnail-panel {
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+}
+
+.thumbnail-panel h3 {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 10px;
+}
+
+.thumbnail-wrapper {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  overflow: auto;
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 10px;
+  max-height: 200px;
+}
+
+.thumbnail-wrapper img {
+  max-width: 100%;
+  max-height: 180px;
+  object-fit: contain;
+}
+
+/* 右下角工具栏 */
+.toolbar-bottom {
+  margin-top: auto;
+  padding: 15px;
+  border-top: 1px solid #ddd;
+  background-color: #f8f9fa;
+  flex: 0 0 auto;
+  overflow-y: auto;
+  max-height: calc(100vh - 280px);
+}
+
+.toolbar-bottom .tool-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 8px;
+}
+
+.toolbar-bottom .tool-group:last-child {
+  margin-bottom: 0;
+}
+
+.toolbar-bottom .tool-group button {
+  flex: 1;
+  min-width: 70px;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+
+/* 保留原有类名兼容性 */
+.image-display-container {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+}
+
+.image-display-container h3 {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 10px;
+}
+
+.image-wrapper {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: auto;
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.image-wrapper img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.processing-panel {
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.processing-panel h3 {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 10px;
+}
+
+.toolbar {
+  margin-top: 15px;
+}
+
+.tool-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+
+.tool-group button {
+  flex: 1;
+  min-width: 80px;
+}

@@ -1,0 +1,266 @@
+/* 图片列表项样式 */
+.image-list-item {
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: background-color 0.2s;
+}
+
+.image-list-item:hover {
+  background-color: #f0f0f0;
+}
+
+.image-list-item.active {
+  background-color: #007bff;
+  color: #fff;
+}
+
+.image-list-item .thumbnail {
+  width: 50px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.image-list-item .info {
+  flex: 1;
+  overflow: hidden;
+}
+
+.image-list-item .filename {
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.image-list-item .status {
+  font-size: 10px;
+  color: #666;
+  margin-top: 4px;
+}
+
+/* 模态框样式 */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal.active {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-content {
+  background-color: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  max-width: 500px;
+  width: 90%;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.modal-title {
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.modal-close {
+  cursor: pointer;
+  font-size: 24px;
+  color: #666;
+}
+
+.modal-body {
+  margin-bottom: 15px;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* 裁剪框样式 */
+.crop-container {
+  position: relative;
+  display: inline-block;
+}
+
+.crop-box {
+  position: absolute;
+  border: 2px dashed #007bff;
+  background-color: rgba(0, 123, 255, 0.1);
+  cursor: move;
+}
+
+.crop-handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background-color: #007bff;
+  border: 1px solid #fff;
+}
+
+/* 加载动画 */
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 状态指示器 */
+.status-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 5px;
+}
+
+.status-indicator.pending {
+  background-color: #ffc107;
+}
+
+.status-indicator.processing {
+  background-color: #17a2b8;
+}
+
+.status-indicator.completed {
+  background-color: #28a745;
+}
+
+.status-indicator.error {
+  background-color: #dc3545;
+}
+
+/* 快捷键提示 */
+.shortcut-hint {
+  font-size: 10px;
+  color: #999;
+  margin-left: 5px;
+}
+
+/* 工具栏按钮激活状态 */
+.toolbar button.active {
+  background-color: #007bff;
+  color: #fff;
+  border-color: #007bff;
+}
+
+/* 滑块控件 */
+.slider-container {
+  margin: 10px 0;
+}
+
+.slider-label {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+
+.slider-input {
+  width: 100%;
+}
+
+/* 工具栏分界线 */
+.toolbar-divider {
+  height: 1px;
+  background-color: #ddd;
+  margin: 10px 0;
+}
+
+/* 选区高亮样式 */
+.selection-overlay {
+  position: absolute;
+  border: 2px dashed #007bff;
+  background-color: rgba(0, 123, 255, 0.2);
+  pointer-events: none;
+}
+
+/* 裁剪确认按钮样式 */
+.crop-confirm-buttons {
+  display: flex;
+  gap: 8px;
+  padding: 6px 8px;
+  background-color: rgba(255, 255, 255, 0.95);
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  pointer-events: auto;
+  margin: 8px; /* 与选区边缘保持间距 */
+}
+
+.crop-btn {
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 60px;
+}
+
+.crop-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.crop-btn:active {
+  transform: translateY(0);
+}
+
+.crop-btn-cancel {
+  background-color: #dc3545;
+  color: white;
+}
+
+.crop-btn-cancel:hover {
+  background-color: #c82333;
+}
+
+.crop-btn-confirm {
+  background-color: #007bff;
+  color: white;
+}
+
+.crop-btn-confirm:hover {
+  background-color: #0056b3;
+}

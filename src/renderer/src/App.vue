@@ -1,16 +1,150 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useImageStore } from './stores/imageStore'
+import { BatchProcessor, ReportExporter, LicenseManager } from './services'
+import type { BatchTask, ProcessStep } from './services'
 
 const imageStore = useImageStore()
 const opencvReady = ref(false)
 
+// Batch processing state
+const batchRunning = ref(false)
+const batchProgress = ref(0)
+const batchCompleted = ref(0)
+const batchTotal = ref(0)
+const batchProcessor = ref<BatchProcessor | null>(null)
+
+// License state
+const showLicenseModal = ref(false)
+const licenseKey = ref('')
+const licenseStatus = ref<{ type: string; message: string } | null>(null)
+const licenseManager = new LicenseManager()
+
+// Check license on mount
 onMounted(() => {
   window.addEventListener('opencv-ready', () => {
     opencvReady.value = true
     console.log('OpenCV.js ready in Vue app')
   })
+
+  const license = licenseManager.loadLicense()
+  if (!license || !licenseManager.isValid(license)) {
+    showLicenseModal.value = true
+  }
 })
+
+async function runBatchProcess() {
+  if (!licenseManager.hasFeature('batch')) {
+    licenseStatus.value = { type: 'error', message: '批量处理需要标准版许可证' }
+    showLicenseModal.value = true
+    return
+  }
+
+  const steps: ProcessStep[] = ['autoCorrect', 'autoRemoveBorder', 'autoClean']
+  const tasks: BatchTask[] = imageStore.imageList.map((img, idx) => ({
+    id: `batch-${idx}`,
+    imageId: img.id,
+    steps,
+    status: 'pending'
+  }))
+
+  batchTotal.value = tasks.length
+  batchCompleted.value = 0
+  batchProgress.value = 0
+  batchRunning.value = true
+
+  const processor = new BatchProcessor()
+  batchProcessor.value = processor
+
+  await processor.process(
+    imageStore.currentMats as any,
+    tasks,
+    {
+      parallel: true,
+      maxConcurrency: 2,
+      onProgress: (completed, total) => {
+        batchCompleted.value = completed
+        batchTotal.value = total
+        batchProgress.value = Math.round((completed / total) * 100)
+      },
+      onError: (task, err) => {
+        console.error(`Batch task ${task.id} failed:`, err)
+      }
+    }
+  )
+
+  batchRunning.value = false
+}
+
+function cancelBatch() {
+  batchProcessor.value?.abort()
+  batchRunning.value = false
+}
+
+async function exportReport() {
+  if (!licenseManager.hasFeature('export')) {
+    licenseStatus.value = { type: 'error', message: '导出功能需要标准版许可证' }
+    showLicenseModal.value = true
+    return
+  }
+
+  const exporter = new ReportExporter()
+  const images = imageStore.imageList.map(img => ({
+    id: img.id,
+    name: img.name,
+    path: img.path,
+    processedUrl: img.processedUrl,
+    status: img.status
+  }))
+
+  try {
+    const pdfData = await exporter.exportPDF(images, {
+      title: 'img2easy Pro 处理报告',
+      author: 'img2easy Pro',
+      includeThumbnails: true
+    })
+
+    // Download via Electron main process
+    const buffer = pdfData as unknown as ArrayBuffer
+    const blob = new Blob([buffer], { type: 'application/pdf' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `img2easy-report-${Date.now()}.pdf`
+    a.click()
+    URL.revokeObjectURL(url)
+  } catch (err) {
+    console.error('Export failed:', err)
+  }
+}
+
+async function activateLicense() {
+  const key = licenseKey.value.trim().toUpperCase()
+  if (!licenseManager.validateFormat(key)) {
+    licenseStatus.value = { type: 'error', message: '密钥格式无效' }
+    return
+  }
+
+  const license = await licenseManager.verifyOnline(key)
+  if (license) {
+    licenseStatus.value = { type: 'success', message: '激活成功！' }
+    setTimeout(() => {
+      showLicenseModal.value = false
+      licenseStatus.value = null
+    }, 1500)
+  } else {
+    licenseStatus.value = { type: 'error', message: '密钥验证失败' }
+  }
+}
+
+function startTrial() {
+  licenseManager.generateTrial()
+  licenseStatus.value = { type: 'success', message: '试用已开启（7天）' }
+  setTimeout(() => {
+    showLicenseModal.value = false
+    licenseStatus.value = null
+  }, 1500)
+}
 </script>
 
 <template>
@@ -104,6 +238,7 @@ onMounted(() => {
           </div>
           <div class="tool-group">
             <button @click="imageStore.undo()" title="撤销">撤销</button>
+            <button @click="imageStore.redo()" title="重做">重做</button>
             <button @click="imageStore.reset()" title="重置">重置</button>
           </div>
           <div class="tool-group">
@@ -115,9 +250,40 @@ onMounted(() => {
             <button @click="imageStore.autoRemoveBorder()">自动去黑边</button>
             <button @click="imageStore.autoClean()">自动去污</button>
           </div>
+          <div class="toolbar-divider"></div>
+          <div class="tool-group batch-group">
+            <button @click="runBatchProcess()">批量处理</button>
+            <button @click="exportReport()">导出报告</button>
+          </div>
         </div>
       </aside>
     </main>
+
+    <!-- License Modal -->
+    <div v-if="showLicenseModal" class="modal-overlay" @click.self="showLicenseModal = false">
+      <div class="modal-content">
+        <h3>许可证激活</h3>
+        <p v-if="licenseStatus" :class="licenseStatus.type">{{ licenseStatus.message }}</p>
+        <input v-model="licenseKey" placeholder="输入许可证密钥 (XXXX-XXXX-XXXX-XXXX)" maxlength="19" />
+        <div class="modal-actions">
+          <button @click="activateLicense()">激活</button>
+          <button @click="startTrial()">试用7天</button>
+          <button @click="showLicenseModal = false">关闭</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Batch Progress Modal -->
+    <div v-if="batchRunning" class="modal-overlay">
+      <div class="modal-content">
+        <h3>批量处理中...</h3>
+        <div class="progress-bar">
+          <div class="progress-fill" :style="{ width: batchProgress + '%' }"></div>
+        </div>
+        <p>{{ batchCompleted }} / {{ batchTotal }} 完成</p>
+        <button @click="cancelBatch()">取消</button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -382,5 +548,86 @@ onMounted(() => {
   height: 1px;
   background: #e9ecef;
   margin: 4px 0;
+}
+
+.batch-group button {
+  background: #2563eb;
+  color: #fff;
+  border-color: #2563eb;
+}
+
+.batch-group button:hover {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+}
+
+/* Modal styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: #fff;
+  padding: 24px;
+  border-radius: 8px;
+  width: 400px;
+  max-width: 90vw;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.modal-content h3 {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+}
+
+.modal-content input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.modal-actions button {
+  padding: 8px 16px;
+  border-radius: 4px;
+  border: 1px solid #ced4da;
+  background: #fff;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.modal-actions button:first-child {
+  background: #2563eb;
+  color: #fff;
+  border-color: #2563eb;
+}
+
+.modal-content .success {
+  color: #10b981;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.modal-content .error {
+  color: #ef4444;
+  font-size: 13px;
+  margin-bottom: 8px;
 }
 </style>
