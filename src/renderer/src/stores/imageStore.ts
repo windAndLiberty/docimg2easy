@@ -185,6 +185,7 @@ export const useImageStore = defineStore('image', () => {
     selectImage,
     addImages,
     removeImage,
+    saveHistory,
     undo,
     rotate180,
     rotateLeft,
