@@ -1,0 +1,61 @@
+npm warn Unknown project config "electron_mirror". This will stop working in the next major version of npm.
+{
+  "theme": {
+    "extend": {
+      "colors": {
+        "primary": "#1a1c2e",
+        "secondary": "#64748b",
+        "accent": "#2563eb",
+        "neutral": "#f8fafc",
+        "success": "#10b981",
+        "warning": "#f59e0b",
+        "error": "#ef4444",
+        "on-primary": "#ffffff",
+        "on-accent": "#ffffff"
+      },
+      "fontFamily": {
+        "h1": [
+          "Inter"
+        ],
+        "body": [
+          "Inter"
+        ],
+        "label": [
+          "Inter"
+        ]
+      },
+      "fontSize": {
+        "h1": [
+          "1.5rem",
+          {
+            "fontWeight": "600"
+          }
+        ],
+        "body": [
+          "0.875rem",
+          {
+            "fontWeight": "400"
+          }
+        ],
+        "label": [
+          "0.75rem",
+          {
+            "letterSpacing": "0.05em",
+            "fontWeight": "500"
+          }
+        ]
+      },
+      "borderRadius": {
+        "sm": "4px",
+        "md": "8px",
+        "lg": "12px"
+      },
+      "spacing": {
+        "xs": "4px",
+        "sm": "8px",
+        "md": "16px",
+        "lg": "24px"
+      }
+    }
+  }
+}

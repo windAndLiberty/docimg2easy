@@ -1,0 +1,52 @@
+[
+  {
+    "title": "DESIGN.md Specification",
+    "href": "https://www.dsebastien.net/design-md-specification/",
+    "body": "DESIGN.md is an open Apache-2.0 format specification from Google Labs for describing a design system to coding agents in a single, version ..."
+  },
+  {
+    "title": "DESIGN.md Generator — Design System for AI Agents | design.dev",
+    "href": "https://design.dev/ai/design-md-generator/",
+    "body": "... google/design.md lint DESIGN.md Validate against the spec npx @google/design.md export --format tailwind Convert to Tailwind theme npx ..."
+  },
+  {
+    "title": "AddyOsmani.com - How to write a good spec for AI agents",
+    "href": "https://addyosmani.com/blog/good-spec/",
+    "body": "Many developers treat specs for agents much like traditional Product Requirement Documents (PRDs) or System Design docs - comprehensive, well ..."
+  },
+  {
+    "title": "design-tokens · GitHub Topics · GitHub",
+    "href": "https://github.com/topics/design-tokens",
+    "body": "landing-page awesome-list design-tokens figma design-system vibe-coding vibe-design google-stitch design-md ... and design: Generate design tokens ..."
+  },
+  {
+    "title": "Evolution of design tokens and component styling, part 1 | by",
+    "href": "https://medium.com/fast-design/evolution-of-design-tokens-and-component-styling-part-1-f1491ad1120e",
+    "body": "Design tokens work well for defining specific values, but the underlying decision that produces a specific value is lost or not applied consistently."
+  },
+  {
+    "title": "material design - M3: Usage of Body.Small typography token in",
+    "href": "https://stackoverflow.com/questions/78891702/m3-usage-of-body-small-typography-token-in-input-fields",
+    "body": "... at the documentation in general and the structure of the typography token, in my opinion, it should reference md.sys.typescale.label-small or md.sys ..."
+  },
+  {
+    "title": "Developer’s Guide to Building ADK Agents with Skills -",
+    "href": "https://mgrowtech.com/developers-guide-to-building-adk-agents-with-skills/",
+    "body": "The references embed the agentskills.io spec as skill-spec.md and a working code-review skill as example-skill.md ."
+  },
+  {
+    "title": "宅宅自以為的浪漫：跟 AI",
+    "href": "https://speakerdeck.com/eddie/zhai-zhai-zi-yi-wei-de-lang-man-gen-ai-qi-wei-zi-ji-ban-de-yan-tao-hui-xie-ge-shou-piao-xi-tong",
+    "body": "claude -p \" 把內容修正成更正式的宣傳 文 案 \" **DevFest Taipei 2025** 是由 Google Developer Groups (GDGs ..."
+  },
+  {
+    "title": "Fullstack Developer Agent - ClaudeKit Documentation",
+    "href": "https://docs.claudekit.cc/docs/agents/fullstack-developer",
+    "body": "... shadcn/ui Skill Frontend Design Skill Web Frameworks Skill UI Styling Skill Three.js Skill Frontend Development Skill Aesthetic Skill Frontend Design ..."
+  },
+  {
+    "title": "llms.txt: make your API documentation AI-readable",
+    "href": "https://coinpaprika.com/education/llms-txt-make-your-api-documentation-ai-readable/",
+    "body": "Proposed by Jeremy Howard (Answer.AI, fast.ai) in September 2024, it works like a table of contents designed specifically for LLMs."
+  }
+]

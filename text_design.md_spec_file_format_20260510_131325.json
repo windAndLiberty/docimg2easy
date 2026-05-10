@@ -1,0 +1,27 @@
+[
+  {
+    "title": "GitHub - samtools/hts-specs: Specifications of SAM/BAM and",
+    "href": "https://github.com/samtools/hts-specs",
+    "body": "... is the canonical specification for the SAM (Sequence Alignment/Map) format, BAM (its binary equivalent), and the BAI format for indexing BAM files."
+  },
+  {
+    "title": "DESIGN.md Specification",
+    "href": "https://www.dsebastien.net/design-md-specification/",
+    "body": "DESIGN.md is an open Apache-2.0 format specification from Google Labs for describing a design system to coding agents in a single, ..."
+  },
+  {
+    "title": "Claude Code: Skills, Plugins, and the JSONC Design Spec Trick",
+    "href": "https://deloughry.co.uk/posts/claude-code--skills-plugins/",
+    "body": "I’ve been getting AI (whether that’s Claude, ChatGPT, or whatever’s to hand) to generate design specifications in JSONC format and then feeding ..."
+  },
+  {
+    "title": "AddyOsmani.com - How to write a good spec for AI agents",
+    "href": "https://addyosmani.com/blog/good-spec/",
+    "body": "The six core areas: GitHub’s analysis of over 2,500 agent configuration files revealed a clear pattern: the most effective specs cover six areas."
+  },
+  {
+    "title": "speakerdeck.com/antonarhipov/spec-driven-development-with-ai-agents-java-day-istanbul-2026",
+    "href": "https://speakerdeck.com/antonarhipov/spec-driven-development-with-ai-agents-java-day-istanbul-2026",
+    "body": ""
+  }
+]

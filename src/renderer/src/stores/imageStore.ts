@@ -18,6 +18,16 @@ interface MatState {
   url: string
 }
 
+export interface ProcessingRecord {
+  id: string
+  imageId: string
+  imageName: string
+  operation: string
+  timestamp: string
+  beforeUrl?: string
+  afterUrl?: string
+}
+
 export const useImageStore = defineStore('image', () => {
   // OpenCV composable
   const { ready: opencvReady, waitReady } = useOpenCV()
@@ -53,6 +63,9 @@ export const useImageStore = defineStore('image', () => {
 
   // Current working Mat for the selected image
   const currentMats = shallowRef<Map<string, MatState>>(new Map())
+
+  // Processing history records
+  const processingHistory = ref<ProcessingRecord[]>([])
 
   // Getters
   const currentImage = computed(() =>
@@ -128,6 +141,27 @@ export const useImageStore = defineStore('image', () => {
       const next = redoStack.value.pop()!
       applySnapshot(next)
     }
+  }
+
+  function addProcessingRecord(imageId: string, operation: string, beforeUrl?: string, afterUrl?: string): void {
+    const item = imageList.value.find((i) => i.id === imageId)
+    processingHistory.value.push({
+      id: `rec-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      imageId,
+      imageName: item?.name || imageId,
+      operation,
+      timestamp: new Date().toISOString(),
+      beforeUrl,
+      afterUrl
+    })
+  }
+
+  function clearProcessingHistory(): void {
+    processingHistory.value = []
+  }
+
+  function getHistoryByImage(imageId: string): ProcessingRecord[] {
+    return processingHistory.value.filter((r) => r.imageId === imageId)
   }
 
   // Actions
@@ -223,31 +257,37 @@ export const useImageStore = defineStore('image', () => {
   async function rotate180(): Promise<void> {
     const mat = await ensureMat()
     if (!mat) return
+    const beforeUrl = currentImage.value?.processedUrl
     saveHistory()
     const cv = (window as any).cv
     const dst = new cv.Mat()
     cv.rotate(mat, dst, cv.ROTATE_180)
     updateCurrentMat(dst)
+    addProcessingRecord(currentImageId.value || '', 'rotate180', beforeUrl, currentImage.value?.processedUrl)
   }
 
   async function rotateLeft(): Promise<void> {
     const mat = await ensureMat()
     if (!mat) return
+    const beforeUrl = currentImage.value?.processedUrl
     saveHistory()
     const cv = (window as any).cv
     const dst = new cv.Mat()
     cv.rotate(mat, dst, cv.ROTATE_90_COUNTERCLOCKWISE)
     updateCurrentMat(dst)
+    addProcessingRecord(currentImageId.value || '', 'rotateLeft', beforeUrl, currentImage.value?.processedUrl)
   }
 
   async function rotateRight(): Promise<void> {
     const mat = await ensureMat()
     if (!mat) return
+    const beforeUrl = currentImage.value?.processedUrl
     saveHistory()
     const cv = (window as any).cv
     const dst = new cv.Mat()
     cv.rotate(mat, dst, cv.ROTATE_90_CLOCKWISE)
     updateCurrentMat(dst)
+    addProcessingRecord(currentImageId.value || '', 'rotateRight', beforeUrl, currentImage.value?.processedUrl)
   }
 
   function skewLeft(): void {
@@ -261,6 +301,7 @@ export const useImageStore = defineStore('image', () => {
   async function crop(rect?: { x: number; y: number; width: number; height: number }): Promise<void> {
     const mat = await ensureMat()
     if (!mat || !imageProcessor.value) return
+    const beforeUrl = currentImage.value?.processedUrl
     saveHistory()
     // If no rect provided, use a default center crop or rely on UI selection later
     const defaultRect = rect || {
@@ -271,11 +312,13 @@ export const useImageStore = defineStore('image', () => {
     }
     const dst = imageProcessor.value.crop(mat, defaultRect)
     updateCurrentMat(dst)
+    addProcessingRecord(currentImageId.value || '', 'crop', beforeUrl, currentImage.value?.processedUrl)
   }
 
   async function reset(): Promise<void> {
     const item = currentImage.value
     if (!item) return
+    const beforeUrl = currentImage.value?.processedUrl
     saveHistory()
     skewAngle.value = 0
     // Reload original mat
@@ -285,11 +328,13 @@ export const useImageStore = defineStore('image', () => {
       currentMats.value.delete(item.id)
     }
     await ensureMat()
+    addProcessingRecord(currentImageId.value || '', 'reset', beforeUrl, currentImage.value?.processedUrl)
   }
 
   async function autoCorrect(): Promise<void> {
     const mat = await ensureMat()
     if (!mat || !angleCorrector.value) return
+    const beforeUrl = currentImage.value?.processedUrl
     saveHistory()
     processing.value = true
     progress.value = 0
@@ -297,6 +342,7 @@ export const useImageStore = defineStore('image', () => {
       const dst = await angleCorrector.value.correct(mat)
       updateCurrentMat(dst)
       progress.value = 100
+      addProcessingRecord(currentImageId.value || '', 'autoCorrect', beforeUrl, currentImage.value?.processedUrl)
     } catch (e) {
       console.error('autoCorrect error', e)
     } finally {
@@ -307,11 +353,13 @@ export const useImageStore = defineStore('image', () => {
   async function autoRemoveBorder(): Promise<void> {
     const mat = await ensureMat()
     if (!mat || !borderRemover.value) return
+    const beforeUrl = currentImage.value?.processedUrl
     saveHistory()
     processing.value = true
     try {
       const dst = await borderRemover.value.removeBorder(mat)
       updateCurrentMat(dst)
+      addProcessingRecord(currentImageId.value || '', 'autoRemoveBorder', beforeUrl, currentImage.value?.processedUrl)
     } catch (e) {
       console.error('autoRemoveBorder error', e)
     } finally {
@@ -322,11 +370,13 @@ export const useImageStore = defineStore('image', () => {
   async function autoClean(): Promise<void> {
     const mat = await ensureMat()
     if (!mat || !documentCleaner.value) return
+    const beforeUrl = currentImage.value?.processedUrl
     saveHistory()
     processing.value = true
     try {
       const dst = await documentCleaner.value.clean(mat)
       updateCurrentMat(dst)
+      addProcessingRecord(currentImageId.value || '', 'autoClean', beforeUrl, currentImage.value?.processedUrl)
     } catch (e) {
       console.error('autoClean error', e)
     } finally {
@@ -354,6 +404,7 @@ export const useImageStore = defineStore('image', () => {
     opencvReady,
     pendingCount,
     doneCount,
+    processingHistory,
     importFolder,
     selectImage,
     addImages,
@@ -375,6 +426,9 @@ export const useImageStore = defineStore('image', () => {
     setProgress,
     ensureMat,
     matToDataUrl,
-    currentMats
+    currentMats,
+    addProcessingRecord,
+    clearProcessingHistory,
+    getHistoryByImage
   }
 })

@@ -35,9 +35,12 @@
     "dev": "electron-vite dev",
     "build": "npm run typecheck && electron-vite build",
     "postinstall": "electron-builder install-app-deps",
+    "build:linux": "npm run build && electron-builder --linux",
     "build:win": "npm run build && electron-builder --win",
     "build:mac": "npm run build && electron-builder --mac",
-    "build:linux": "npm run build && electron-builder --linux"
+    "build:all": "npm run build && electron-builder --linux --win --mac",
+    "dist": "npm run build && electron-builder --linux --win --mac",
+    "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.1",
@@ -115,7 +118,13 @@
     "linux": {
       "target": [
         {
-          "target": "dir",
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
           "arch": [
             "x64"
           ]

@@ -2,4 +2,6 @@
 node_modules
 implementation_*
 dist
-refer
+referdist_electron/
+out/
+text_*.json

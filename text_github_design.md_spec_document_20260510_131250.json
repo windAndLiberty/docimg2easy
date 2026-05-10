@@ -1,0 +1,52 @@
+[
+  {
+    "title": "GitHub Spec-Kit Spec Driven Dev is in the Right Direction:",
+    "href": "https://robotpaper.ai/i-tried-out-github-spec-kit-and-all-i-got-was-this-not-terrible-website/",
+    "body": "Tasks: Photo Album Organization Application **Input**: Design documents from `/specs/001-build-an-application/` **Prerequisites**: plan.md (required ..."
+  },
+  {
+    "title": "GitHub - github/spec-kit: 💫 Toolkit to help you get started",
+    "href": "https://github.com/github/spec-kit",
+    "body": "Spec-Driven Development changes this: specifications ... uvx --from git+https://github.com/github/spec-kit.git specify init"
+  },
+  {
+    "title": "GitHub - WebAssembly/relaxed-dead-code-validation",
+    "href": "https://github.com/WebAssembly/relaxed-dead-code-validation",
+    "body": "This repository is a clone of github.com/WebAssembly/spec/. ... specification change likely to generate substantial discussion should take place in ..."
+  },
+  {
+    "title": "What's The Deal With GitHub Spec Kit · Den Delimarsky",
+    "href": "https://den.dev/blog/github-spec-kit/",
+    "body": "The gist of the specification document is simple - it ’ s an outline of the “ what ” and the “ why ” of your product ..."
+  },
+  {
+    "title": "Diving Into Spec-Driven Development With GitHub Spec Kit -",
+    "href": "https://developer.microsoft.com/blog/spec-driven-development-spec-kit",
+    "body": "GitHub Spec Kit was designed to work in the environment you ’ re already building your software in. ... GitHub Spec Kit introduces an extra file ..."
+  },
+  {
+    "title": "GitHub Spec Kit | David Burela’s blog",
+    "href": "https://blog.davidburela.com/2025/10/07/github-spec-kit/",
+    "body": "Then it pulls down the Agent‑specific prompts, scripts, and markdown templates into .github/prompts and .specify ."
+  },
+  {
+    "title": "Generate Specs for GitHub Copilot | copilot-instructions.md",
+    "href": "https://www.keeborg.com/for/github-copilot",
+    "body": "Generate a .github/copilot-instructions.md file and 7 other specification documents optimized for GitHub Copilot in under 90 seconds."
+  },
+  {
+    "title": "Alternatives and detailed information of Specs - GitPlanet",
+    "href": "https://gitplanet.com/project/specs",
+    "body": "This is the Filecoin Specification , a repository that contains documents, code, models, and diagrams that constitute the specification of the ..."
+  },
+  {
+    "title": "design.md/README.md at main · google-labs-code/design.md",
+    "href": "https://github.com/google-labs-code/design.md/blob/main/README.md",
+    "body": "A format specification for describing a visual identity to coding agents. DESIGN.md gives agents a persistent, structured understanding of a design system. - design.md/README.md at main · google-labs-code/design.md."
+  },
+  {
+    "title": "DESIGN.md — How One Markdown File from Google Is Replacing...",
+    "href": "https://www.working-ref.com/en/reference/design-md-google-spec-ai-agents-2026",
+    "body": "DESIGN.md is a file that captures an entire design system in a single markdown document. Think of it as the design counterpart to AGENTS.md — the file that tells coding agents how to build the project. VoltAgent's comparison makes it intuitive. github."
+  }
+]
