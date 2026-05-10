@@ -4,6 +4,7 @@ const preload = require("@electron-toolkit/preload");
 const api = {
   openDirectory: () => electron.ipcRenderer.invoke("dialog:openDirectory"),
   openFile: () => electron.ipcRenderer.invoke("dialog:openFile"),
+  scanFolder: (folderPath) => electron.ipcRenderer.invoke("fs:scanFolder", folderPath),
   onOpenCvReady: (callback) => {
     electron.ipcRenderer.on("opencv-ready", callback);
   }
