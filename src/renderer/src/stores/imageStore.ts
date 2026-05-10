@@ -167,10 +167,23 @@ export const useImageStore = defineStore('image', () => {
   // Actions
   async function importFolder(): Promise<void> {
     try {
+      console.log('[importFolder] Calling window.api.openDirectory()...')
       const folderPath = await (window as any).api.openDirectory()
-      if (!folderPath) return
+      console.log('[importFolder] folderPath:', folderPath)
+      if (!folderPath) {
+        console.log('[importFolder] User cancelled or no folder selected')
+        return
+      }
 
+      console.log('[importFolder] Scanning folder:', folderPath)
       const imagePaths: string[] = await (window as any).api.scanFolder(folderPath)
+      console.log('[importFolder] Found images:', imagePaths.length, imagePaths)
+
+      if (imagePaths.length === 0) {
+        console.warn('[importFolder] No images found in folder:', folderPath)
+        return
+      }
+
       const newImages: ImageItem[] = imagePaths.map((p, idx) => ({
         id: `img-${Date.now()}-${idx}`,
         name: p.split(/[\\/]/).pop() || p,
@@ -184,8 +197,9 @@ export const useImageStore = defineStore('image', () => {
       if (!currentImageId.value && newImages.length > 0) {
         currentImageId.value = newImages[0].id
       }
+      console.log('[importFolder] Added', newImages.length, 'images')
     } catch (err) {
-      console.error('Failed to import folder:', err)
+      console.error('[importFolder] Failed to import folder:', err)
     }
   }
 

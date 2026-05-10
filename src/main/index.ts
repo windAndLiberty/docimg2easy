@@ -54,10 +54,14 @@ app.whenReady().then(() => {
 
   // IPC handlers
   ipcMain.handle('dialog:openDirectory', async () => {
-    const { canceled, filePaths } = await dialog.showOpenDialog({
-      properties: ['openDirectory']
+    console.log('[main] dialog:openDirectory called')
+    const focusedWindow = BrowserWindow.getFocusedWindow()
+    const { canceled, filePaths } = await dialog.showOpenDialog(focusedWindow!, {
+      properties: ['openDirectory'],
+      title: '选择图片文件夹'
     })
-    if (canceled) {
+    console.log('[main] dialog result:', { canceled, filePaths })
+    if (canceled || filePaths.length === 0) {
       return null
     }
     return filePaths[0]
@@ -78,20 +82,27 @@ app.whenReady().then(() => {
   })
 
   ipcMain.handle('fs:scanFolder', async (_, folderPath: string) => {
+    console.log('[main] fs:scanFolder called with:', folderPath)
     const fs = await import('fs')
     const path = await import('path')
-    const entries = fs.readdirSync(folderPath, { withFileTypes: true })
-    const imageExts = ['.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.webp', '.gif']
-    const imagePaths: string[] = []
-    for (const entry of entries) {
-      if (entry.isFile()) {
-        const ext = path.extname(entry.name).toLowerCase()
-        if (imageExts.includes(ext)) {
-          imagePaths.push(path.join(folderPath, entry.name))
+    try {
+      const entries = fs.readdirSync(folderPath, { withFileTypes: true })
+      const imageExts = ['.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.webp', '.gif']
+      const imagePaths: string[] = []
+      for (const entry of entries) {
+        if (entry.isFile()) {
+          const ext = path.extname(entry.name).toLowerCase()
+          if (imageExts.includes(ext)) {
+            imagePaths.push(path.join(folderPath, entry.name))
+          }
         }
       }
+      console.log('[main] scanFolder found', imagePaths.length, 'images')
+      return imagePaths
+    } catch (err) {
+      console.error('[main] scanFolder error:', err)
+      return []
     }
-    return imagePaths
   })
 
   createWindow()
