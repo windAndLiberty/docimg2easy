@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>img2easy Pro</title>
+    <!-- Preload OpenCV for preview -->
+    <script>
+      window.__opencvLoaded = false;
+      window.__opencvReadyCalled = false;
+      window.onOpenCvReady = function() {
+        if (window.__opencvReadyCalled) return;
+        window.__opencvReadyCalled = true;
+        if (typeof cv !== 'undefined' && cv.Mat) {
+          window.dispatchEvent(new CustomEvent('opencv-ready'));
+        } else if (typeof cv !== 'undefined') {
+          cv['onRuntimeInitialized'] = function() {
+            window.dispatchEvent(new CustomEvent('opencv-ready'));
+          };
+        }
+      };
+    </script>
+    <script async src="/lib/opencv/opencv.js" onload="window.onOpenCvReady()"></script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
