@@ -2,6 +2,8 @@
  * 边缘清理器
  * 使用灰度分析和裁剪技术清理边缘
  */
+import type { CvMat } from '../types/opencv'
+import { safeDelete } from '../utils/matLifecycle'
 import { ImageProcessor } from './imageProcessor'
 
 export class EdgeCleaner extends ImageProcessor {
@@ -9,7 +11,7 @@ export class EdgeCleaner extends ImageProcessor {
   minEdgeWidth = 10
   maxEdgeWidth = 100
 
-  clean(src: any): any {
+  clean(src: CvMat): CvMat {
     const edges = this.detectEdges(src)
     const cropRect = this.calculateCropRect(src, edges)
     if (cropRect.width <= 0 || cropRect.height <= 0) {
@@ -18,11 +20,11 @@ export class EdgeCleaner extends ImageProcessor {
     return this.crop(src, cropRect)
   }
 
-  detectEdges(src: any): { top: number; bottom: number; left: number; right: number } {
+  detectEdges(src: CvMat): { top: number; bottom: number; left: number; right: number } {
     const gray = this.toGray(src)
     const rowMeans = this.analyzeRowMeans(gray)
     const colMeans = this.analyzeColMeans(gray)
-    gray.delete()
+    safeDelete(gray)
     return {
       top: this.detectTopEdge(rowMeans),
       bottom: this.detectBottomEdge(rowMeans),
@@ -31,7 +33,7 @@ export class EdgeCleaner extends ImageProcessor {
     }
   }
 
-  analyzeRowMeans(gray: any): number[] {
+  analyzeRowMeans(gray: CvMat): number[] {
     const means: number[] = []
     for (let y = 0; y < gray.rows; y++) {
       let sum = 0
@@ -43,7 +45,7 @@ export class EdgeCleaner extends ImageProcessor {
     return means
   }
 
-  analyzeColMeans(gray: any): number[] {
+  analyzeColMeans(gray: CvMat): number[] {
     const means: number[] = []
     for (let x = 0; x < gray.cols; x++) {
       let sum = 0
@@ -91,7 +93,7 @@ export class EdgeCleaner extends ImageProcessor {
     return 0
   }
 
-  calculateCropRect(src: any, edges: { top: number; bottom: number; left: number; right: number }): { x: number; y: number; width: number; height: number } {
+  calculateCropRect(src: CvMat, edges: { top: number; bottom: number; left: number; right: number }): { x: number; y: number; width: number; height: number } {
     const safeTop = Math.min(Math.max(edges.top, 0), this.maxEdgeWidth)
     const safeBottom = Math.min(Math.max(edges.bottom, 0), this.maxEdgeWidth)
     const safeLeft = Math.min(Math.max(edges.left, 0), this.maxEdgeWidth)

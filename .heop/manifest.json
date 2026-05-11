@@ -1,0 +1,75 @@
+{
+  "version": "3.0.0",
+  "project": "img2easy",
+  "description": "开源文档图像处理工具 - Electron + Vue 3 + TypeScript + OpenCV.js",
+  "ssot": {
+    "documents": [
+      {
+        "id": "PLAN",
+        "file": "PLAN.md",
+        "role": "项目计划与模块状态跟踪",
+        "updated": "2026-05-11",
+        "locked": true
+      },
+      {
+        "id": "DECISIONS",
+        "file": "DECISIONS.md",
+        "role": "架构决策记录 (ADR)",
+        "updated": "2026-05-11",
+        "locked": true
+      },
+      {
+        "id": "ANALYSIS",
+        "file": "ANALYSIS.md",
+        "role": "逆向思维分析笔记 - 缺陷识别与范式推断",
+        "updated": "2026-05-11",
+        "locked": true
+      },
+      {
+        "id": "TEST_SPEC",
+        "file": "TEST_SPEC.md",
+        "role": "测试规格书 - 编码前必须 LOCK",
+        "updated": "2026-05-11",
+        "locked": true,
+        "lock_required": true
+      },
+      {
+        "id": "ARCHITECTURE",
+        "file": "ARCHITECTURE.md",
+        "role": "架构图集 - Mermaid 描述",
+        "updated": "2026-05-11",
+        "locked": true
+      },
+      {
+        "id": "PARADIGM",
+        "file": "PARADIGM.md",
+        "role": "编程范式规范与边界",
+        "updated": "2026-05-11",
+        "locked": true
+      }
+    ],
+    "relationships": [
+      { "from": "ANALYSIS", "to": "TEST_SPEC", "type": "informs", "description": "分析缺陷驱动测试设计" },
+      { "from": "TEST_SPEC", "to": "ARCHITECTURE", "type": "constrains", "description": "测试约束架构实现" },
+      { "from": "PARADIGM", "to": "TEST_SPEC", "type": "guides", "description": "范式指导测试风格" },
+      { "from": "DECISIONS", "to": "ARCHITECTURE", "type": "governs", "description": "决策治理架构选择" }
+    ],
+    "workflow": {
+      "current_phase": "phase4_coding",
+      "phases": [
+        { "id": "phase1", "name": "逆向分析", "status": "completed" },
+        { "id": "phase2", "name": "SSOT 起草", "status": "completed" },
+        { "id": "phase3", "name": "用户审阅", "status": "completed" },
+        { "id": "phase4", "name": "测试先行编码", "status": "in_progress" },
+        { "id": "phase5", "name": "集成验证", "status": "pending" }
+      ]
+    },
+    "validation": {
+      "rules": [
+        "TEST_SPEC 必须 locked=true 才能开始编码",
+        "每轮迭代必须更新 ITERATIONS.md",
+        "Git commit 必须引用对应决策 ID"
+      ]
+    }
+  }
+}

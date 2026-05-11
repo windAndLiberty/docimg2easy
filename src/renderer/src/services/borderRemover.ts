@@ -2,6 +2,8 @@
  * 黑边消除器
  * 使用轮廓检测和触边检测算法消除文档边缘的黑边
  */
+import type { CvMat } from '../types/opencv'
+import { safeDelete } from '../utils/matLifecycle'
 import { ImageProcessor } from './imageProcessor'
 
 export class BorderRemover extends ImageProcessor {
@@ -12,148 +14,99 @@ export class BorderRemover extends ImageProcessor {
   preserveTimingMarks = true
   timingMarkPosition = 'right'
 
-  removeBorder(src: any): any {
+  remove(src: CvMat): CvMat {
+    return this.removeBorder(src)
+  }
+
+  private removeBorder(src: CvMat): CvMat {
     const resultImg = src.clone()
     const h = src.rows
     const w = src.cols
     const imageArea = h * w
 
+    // 预处理：灰度 + 二值化
     const gray = this.toGray(src)
-    const blurred = this.gaussianBlur(gray, 3)
-    gray.delete()
+    const binary = this.binarize(gray, 0, true)
+    safeDelete(gray)
 
-    const binary = new this.cv.Mat()
-    this.cv.threshold(blurred, binary, 0, 255, this.cv.THRESH_BINARY_INV + this.cv.THRESH_OTSU)
-    blurred.delete()
+    // 形态学闭运算填充小孔
+    const closed = this.morphClose(binary, 3)
+    safeDelete(binary)
 
-    const kernel = this.cv.getStructuringElement(this.cv.MORPH_RECT, new this.cv.Size(3, 3))
-    const processedBinary = new this.cv.Mat()
-    this.cv.morphologyEx(binary, processedBinary, this.cv.MORPH_CLOSE, kernel)
-    kernel.delete()
+    // 查找轮廓
+    const { contours, hierarchy } = this.findContours(closed)
+    safeDelete(closed)
+    safeDelete(hierarchy)
 
-    let cornerMask: any = null
-    if (this.cornerDetection) {
-      cornerMask = this._detectCornerBorders(binary, h, w)
-    }
-    binary.delete()
-
-    const { contours, hierarchy } = this.findContours(processedBinary)
-    processedBinary.delete()
-
-    const borderMask = new this.cv.Mat.zeros(h, w, this.cv.CV_8UC1)
+    const borderMask = this.cv.zeros(h, w, this.cv.CV_8UC1)
     let bordersRemoved = 0
     const maxBorderArea = imageArea * this.maxBorderAreaRatio
 
     for (let i = 0; i < contours.size(); i++) {
       const cnt = contours.get(i)
-      const rect = this.cv.boundingRect(cnt)
       const area = this.cv.contourArea(cnt)
+      const rect = this.cv.boundingRect(cnt)
 
-      if (area < this.minBorderArea || area > maxBorderArea) continue
+      // 面积过滤
+      if (area < this.minBorderArea || area > maxBorderArea) {
+        safeDelete(cnt)
+        continue
+      }
 
+      // 触边检测
       const touchesLeft = rect.x <= this.edgeTolerance
       const touchesTop = rect.y <= this.edgeTolerance
       const touchesRight = (rect.x + rect.width) >= (w - this.edgeTolerance)
       const touchesBottom = (rect.y + rect.height) >= (h - this.edgeTolerance)
-      if (!touchesLeft && !touchesTop && !touchesRight && !touchesBottom) continue
 
-      if (this.preserveTimingMarks && this._isTimingMark(rect.x, rect.y, rect.width, rect.height, w, h)) continue
+      if (!touchesLeft && !touchesTop && !touchesRight && !touchesBottom) {
+        safeDelete(cnt)
+        continue
+      }
 
-      const edgeAreaRatio = rect.width * rect.height > 0 ? area / (rect.width * rect.height) : 0
-      if (edgeAreaRatio < 0.3) continue
+      // 宽高比过滤（排除细长线条）
+      const aspectRatio = rect.width / rect.height
+      if (aspectRatio > 20 || aspectRatio < 0.05) {
+        safeDelete(cnt)
+        continue
+      }
 
-      const color = new this.cv.Scalar(255)
+      // 绘制到掩码
       const singleContour = new this.cv.MatVector()
       singleContour.push_back(cnt)
-      this.cv.drawContours(borderMask, singleContour, -1, color, this.cv.FILLED)
+      const white = new this.cv.Scalar(255)
+      this.cv.drawContours(borderMask, singleContour, -1, white, this.cv.FILLED)
       singleContour.delete()
+      safeDelete(cnt)
       bordersRemoved++
     }
 
-    if (cornerMask) {
-      this.cv.bitwise_or(borderMask, cornerMask, borderMask)
-      cornerMask.delete()
+    contours.delete()
+
+    // 应用掩码去除黑边
+    if (bordersRemoved > 0) {
+      const cleaned = new this.cv.Mat()
+      const white = new this.cv.Scalar(255, 255, 255, 255)
+      this.cv.bitwise_and(resultImg, resultImg, cleaned, borderMask)
+      // 反转掩码填充白色背景
+      const invertedMask = new this.cv.Mat()
+      this.cv.bitwise_not(borderMask, invertedMask)
+      const bg = new this.cv.Mat(h, w, resultImg.type)
+      bg.setTo(white)
+      this.cv.bitwise_and(bg, bg, resultImg, invertedMask)
+      this.cv.bitwise_or(cleaned, resultImg, resultImg)
+      safeDelete(bg)
+      safeDelete(cleaned)
+      safeDelete(invertedMask)
     }
 
-    const dilationKernel = this.cv.getStructuringElement(this.cv.MORPH_RECT, new this.cv.Size(3, 3))
-    this.cv.dilate(borderMask, borderMask, dilationKernel)
-    dilationKernel.delete()
-
-    const white = src.channels() === 4 ? new this.cv.Scalar(255, 255, 255, 255) : new this.cv.Scalar(255, 255, 255)
-    resultImg.setTo(white, borderMask)
-
-    contours.delete()
-    hierarchy.delete()
-    borderMask.delete()
-
-    console.log(`黑边消除完成，共消除 ${bordersRemoved} 个黑边区域`)
+    safeDelete(borderMask)
     return resultImg
   }
 
-  _isTimingMark(x: number, _y: number, cw: number, ch: number, imgW: number, imgH: number): boolean {
-    const aspectRatio = ch > 0 ? cw / ch : 0
-    const isRightEdge = (x + cw) >= (imgW - this.edgeTolerance * 2)
-    const isLeftEdge = x <= this.edgeTolerance * 2
-    let isAtPosition = false
-    if (this.timingMarkPosition === 'right') isAtPosition = isRightEdge
-    else if (this.timingMarkPosition === 'left') isAtPosition = isLeftEdge
-    else isAtPosition = isRightEdge || isLeftEdge
-    const widthRatio = cw / imgW
-    const isVerticalStrip = ch > imgH * 0.5 && aspectRatio < 0.5
-    const isNarrow = widthRatio < 0.03 && cw < 25
-    return isAtPosition && isVerticalStrip && isNarrow
-  }
-
-  _detectCornerBorders(binary: any, h: number, w: number): any {
-    const cornerMask = new this.cv.Mat.zeros(h, w, this.cv.CV_8UC1)
-    const cornerH = Math.max(30, Math.floor(h * 0.10))
-    const cornerW = Math.max(30, Math.floor(w * 0.10))
-    const corners = [
-      { x: 0, y: 0, w: cornerW, h: cornerH, name: '左上' },
-      { x: w - cornerW, y: 0, w: cornerW, h: cornerH, name: '右上' },
-      { x: 0, y: h - cornerH, w: cornerW, h: cornerH, name: '左下' },
-      { x: w - cornerW, y: h - cornerH, w: cornerW, h: cornerH, name: '右下' }
-    ]
-    const threshold = 0.005
-
-    for (const corner of corners) {
-      const roi = binary.roi(new this.cv.Rect(corner.x, corner.y, corner.w, corner.h))
-      const nonZeroPixels = this.cv.countNonZero(roi)
-      const totalPixels = roi.rows * roi.cols
-      const blackRatio = totalPixels > 0 ? nonZeroPixels / totalPixels : 0
-
-      if (blackRatio > threshold) {
-        const { contours, hierarchy } = this.findContours(roi)
-        for (let i = 0; i < contours.size(); i++) {
-          const cnt = contours.get(i)
-          const cntArea = this.cv.contourArea(cnt)
-          if (cntArea > 10) {
-            const color = new this.cv.Scalar(255)
-            const shiftedCnt = new this.cv.Mat(cnt.rows, cnt.cols, cnt.type())
-            for (let j = 0; j < cnt.rows; j++) {
-              shiftedCnt.data32S[j * 2] = cnt.data32S[j * 2] + corner.x
-              shiftedCnt.data32S[j * 2 + 1] = cnt.data32S[j * 2 + 1] + corner.y
-            }
-            const singleContour = new this.cv.MatVector()
-            singleContour.push_back(shiftedCnt)
-            this.cv.drawContours(cornerMask, singleContour, -1, color, this.cv.FILLED)
-            singleContour.delete()
-            shiftedCnt.delete()
-          }
-        }
-        contours.delete()
-        hierarchy.delete()
-      }
-      roi.delete()
-    }
-
-    const morphKernel = this.cv.getStructuringElement(this.cv.MORPH_RECT, new this.cv.Size(3, 3))
-    this.cv.morphologyEx(cornerMask, cornerMask, this.cv.MORPH_CLOSE, morphKernel)
-    morphKernel.delete()
-
-    return cornerMask
-  }
-
+  /**
+   * 设置参数
+   */
   setOptions(options: Partial<BorderRemover>): void {
     Object.assign(this, options)
   }

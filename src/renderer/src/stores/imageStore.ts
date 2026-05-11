@@ -13,8 +13,11 @@ export interface ImageItem {
   status: 'pending' | 'processing' | 'done' | 'error'
 }
 
+import type { CvMat } from '../types/opencv'
+import { safeDelete } from '../utils/matLifecycle'
+
 interface MatState {
-  mat: any
+  mat: CvMat
   url: string
 }
 
@@ -81,12 +84,12 @@ export const useImageStore = defineStore('image', () => {
   )
 
   // Helpers
-  function matToDataUrl(mat: any): string {
+  function matToDataUrl(mat: CvMat): string {
     const canvas = document.createElement('canvas')
     canvas.width = mat.cols
     canvas.height = mat.rows
-    const cv = (window as any).cv
-    cv.imshow(canvas, mat)
+    const cv = window.cv
+    if (cv) cv.imshow(canvas, mat)
     return canvas.toDataURL('image/png')
   }
 
@@ -102,7 +105,7 @@ export const useImageStore = defineStore('image', () => {
   function applySnapshot(snapshot: MatState[]) {
     // Clean old mats
     currentMats.value.forEach((state) => {
-      try { state.mat.delete() } catch {}
+      safeDelete(state.mat)
     })
     const next = new Map<string, MatState>()
     for (const s of snapshot) {
@@ -220,7 +223,7 @@ export const useImageStore = defineStore('image', () => {
       imageList.value.splice(idx, 1)
       const matState = currentMats.value.get(id)
       if (matState) {
-        try { matState.mat.delete() } catch {}
+        safeDelete(matState.mat)
         currentMats.value.delete(id)
       }
       if (currentImageId.value === id) {
@@ -229,7 +232,7 @@ export const useImageStore = defineStore('image', () => {
     }
   }
 
-  async function ensureMat(): Promise<any> {
+  async function ensureMat(): Promise<CvMat | null> {
     await initServices()
     const item = currentImage.value
     if (!item) return null
@@ -244,24 +247,28 @@ export const useImageStore = defineStore('image', () => {
         canvas.height = img.naturalHeight
         const ctx = canvas.getContext('2d')!
         ctx.drawImage(img, 0, 0)
-        const cv = (window as any).cv
-        const mat = cv.imread(canvas)
-        const url = canvas.toDataURL('image/png')
-        currentMats.value.set(item.id, { mat, url })
-        item.processedUrl = url
-        resolve(mat)
+        const cv = window.cv
+        if (cv) {
+          const mat = cv.imread(canvas)
+          const url = canvas.toDataURL('image/png')
+          currentMats.value.set(item.id, { mat, url })
+          item.processedUrl = url
+          resolve(mat)
+        } else {
+          resolve(null)
+        }
       }
       img.onerror = () => resolve(null)
       img.src = item.originalUrl
     })
   }
 
-  function updateCurrentMat(mat: any): void {
+  function updateCurrentMat(mat: CvMat): void {
     const item = currentImage.value
     if (!item) return
     const old = currentMats.value.get(item.id)
     if (old) {
-      try { old.mat.delete() } catch {}
+      safeDelete(old.mat)
     }
     const url = matToDataUrl(mat)
     currentMats.value.set(item.id, { mat, url })
@@ -273,11 +280,13 @@ export const useImageStore = defineStore('image', () => {
     if (!mat) return
     const beforeUrl = currentImage.value?.processedUrl
     saveHistory()
-    const cv = (window as any).cv
-    const dst = new cv.Mat()
-    cv.rotate(mat, dst, cv.ROTATE_180)
-    updateCurrentMat(dst)
-    addProcessingRecord(currentImageId.value || '', 'rotate180', beforeUrl, currentImage.value?.processedUrl)
+    const cv = window.cv
+    if (cv) {
+      const dst = new cv.Mat()
+      cv.rotate(mat, dst, cv.ROTATE_180)
+      updateCurrentMat(dst)
+      addProcessingRecord(currentImageId.value || '', 'rotate180', beforeUrl, currentImage.value?.processedUrl)
+    }
   }
 
   async function rotateLeft(): Promise<void> {
@@ -285,11 +294,13 @@ export const useImageStore = defineStore('image', () => {
     if (!mat) return
     const beforeUrl = currentImage.value?.processedUrl
     saveHistory()
-    const cv = (window as any).cv
-    const dst = new cv.Mat()
-    cv.rotate(mat, dst, cv.ROTATE_90_COUNTERCLOCKWISE)
-    updateCurrentMat(dst)
-    addProcessingRecord(currentImageId.value || '', 'rotateLeft', beforeUrl, currentImage.value?.processedUrl)
+    const cv = window.cv
+    if (cv) {
+      const dst = new cv.Mat()
+      cv.rotate(mat, dst, cv.ROTATE_90_COUNTERCLOCKWISE)
+      updateCurrentMat(dst)
+      addProcessingRecord(currentImageId.value || '', 'rotateLeft', beforeUrl, currentImage.value?.processedUrl)
+    }
   }
 
   async function rotateRight(): Promise<void> {
@@ -297,11 +308,13 @@ export const useImageStore = defineStore('image', () => {
     if (!mat) return
     const beforeUrl = currentImage.value?.processedUrl
     saveHistory()
-    const cv = (window as any).cv
-    const dst = new cv.Mat()
-    cv.rotate(mat, dst, cv.ROTATE_90_CLOCKWISE)
-    updateCurrentMat(dst)
-    addProcessingRecord(currentImageId.value || '', 'rotateRight', beforeUrl, currentImage.value?.processedUrl)
+    const cv = window.cv
+    if (cv) {
+      const dst = new cv.Mat()
+      cv.rotate(mat, dst, cv.ROTATE_90_CLOCKWISE)
+      updateCurrentMat(dst)
+      addProcessingRecord(currentImageId.value || '', 'rotateRight', beforeUrl, currentImage.value?.processedUrl)
+    }
   }
 
   function skewLeft(): void {
@@ -338,7 +351,7 @@ export const useImageStore = defineStore('image', () => {
     // Reload original mat
     const old = currentMats.value.get(item.id)
     if (old) {
-      try { old.mat.delete() } catch {}
+      safeDelete(old.mat)
       currentMats.value.delete(item.id)
     }
     await ensureMat()
@@ -371,7 +384,7 @@ export const useImageStore = defineStore('image', () => {
     saveHistory()
     processing.value = true
     try {
-      const dst = await borderRemover.value.removeBorder(mat)
+      const dst = await borderRemover.value.remove(mat)
       updateCurrentMat(dst)
       addProcessingRecord(currentImageId.value || '', 'autoRemoveBorder', beforeUrl, currentImage.value?.processedUrl)
     } catch (e) {

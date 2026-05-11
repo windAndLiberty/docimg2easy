@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useImageStore } from './stores/imageStore'
 import { useHistoryPanel } from './composables/useHistoryPanel'
-import { BatchProcessor, ReportExporter, LicenseManager } from './services'
+import { BatchProcessor, ReportExporter } from './services'
 import type { BatchTask, ProcessStep } from './services'
 
 const imageStore = useImageStore()
@@ -16,58 +16,14 @@ const batchCompleted = ref(0)
 const batchTotal = ref(0)
 const batchProcessor = ref<BatchProcessor | null>(null)
 
-// License state
-const showLicenseModal = ref(false)
-const licenseKey = ref('')
-const licenseStatus = ref<{ type: string; message: string } | null>(null)
-const licenseManager = new LicenseManager()
-
-// License display helpers
-const licenseTypeLabel = computed(() => {
-  const lic = licenseManager.loadLicense()
-  const labels: Record<string, string> = {
-    trial: '试用版',
-    standard: '标准版',
-    pro: '专业版',
-    enterprise: '企业版'
-  }
-  return labels[lic?.type || ''] || lic?.type || '未知'
-})
-
-const trialDaysLeft = computed(() => {
-  const lic = licenseManager.loadLicense()
-  if (!lic?.expiresAt) return 0
-  const now = new Date()
-  const expires = new Date(lic.expiresAt)
-  const diff = Math.ceil((expires.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-  return Math.max(0, diff)
-})
-
-function maskLicenseKey(key: string): string {
-  if (key.length <= 8) return key
-  return key.slice(0, 4) + '****' + key.slice(-4)
-}
-
-// Check license on mount
 onMounted(() => {
   window.addEventListener('opencv-ready', () => {
     opencvReady.value = true
     console.log('OpenCV.js ready in Vue app')
   })
-
-  const license = licenseManager.loadLicense()
-  if (!license || !licenseManager.isValid(license)) {
-    showLicenseModal.value = true
-  }
 })
 
 async function runBatchProcess() {
-  if (!licenseManager.hasFeature('batch')) {
-    licenseStatus.value = { type: 'error', message: '批量处理需要标准版许可证' }
-    showLicenseModal.value = true
-    return
-  }
-
   const steps: ProcessStep[] = ['autoCorrect', 'autoRemoveBorder', 'autoClean']
   const tasks: BatchTask[] = imageStore.imageList.map((img, idx) => ({
     id: `batch-${idx}`,
@@ -84,9 +40,9 @@ async function runBatchProcess() {
   const processor = new BatchProcessor()
   batchProcessor.value = processor
 
+  processor.addTasks(tasks)
   await processor.process(
     imageStore.currentMats as any,
-    tasks,
     {
       parallel: true,
       maxConcurrency: 2,
@@ -105,17 +61,10 @@ async function runBatchProcess() {
 }
 
 function cancelBatch() {
-  batchProcessor.value?.abort()
   batchRunning.value = false
 }
 
 async function exportReport() {
-  if (!licenseManager.hasFeature('export')) {
-    licenseStatus.value = { type: 'error', message: '导出功能需要标准版许可证' }
-    showLicenseModal.value = true
-    return
-  }
-
   const exporter = new ReportExporter()
   const images = imageStore.imageList.map(img => ({
     id: img.id,
@@ -127,8 +76,8 @@ async function exportReport() {
 
   try {
     const pdfData = await exporter.exportPDF(images, {
-      title: 'img2easy Pro 处理报告',
-      author: 'img2easy Pro',
+      title: 'img2easy 处理报告',
+      author: 'img2easy',
       includeThumbnails: true
     })
 
@@ -145,34 +94,6 @@ async function exportReport() {
     console.error('Export failed:', err)
   }
 }
-
-async function activateLicense() {
-  const key = licenseKey.value.trim().toUpperCase()
-  if (!licenseManager.validateFormat(key)) {
-    licenseStatus.value = { type: 'error', message: '密钥格式无效' }
-    return
-  }
-
-  const license = await licenseManager.verifyOnline(key)
-  if (license) {
-    licenseStatus.value = { type: 'success', message: '激活成功！' }
-    setTimeout(() => {
-      showLicenseModal.value = false
-      licenseStatus.value = null
-    }, 1500)
-  } else {
-    licenseStatus.value = { type: 'error', message: '密钥验证失败' }
-  }
-}
-
-function startTrial() {
-  licenseManager.generateTrial()
-  licenseStatus.value = { type: 'success', message: '试用已开启（7天）' }
-  setTimeout(() => {
-    showLicenseModal.value = false
-    licenseStatus.value = null
-  }, 1500)
-}
 </script>
 
 <template>
@@ -182,17 +103,7 @@ function startTrial() {
       <div class="header-right">
         <span v-if="!opencvReady" class="status-badge loading">OpenCV 加载中...</span>
         <span v-else class="status-badge ready">OpenCV 就绪</span>
-        <div class="license-status">
-          <span
-            v-if="licenseManager.isValid()"
-            class="badge"
-            :class="licenseManager.loadLicense()?.type === 'trial' ? 'trial' : 'active'"
-            @click="showLicenseModal = true"
-          >
-            {{ licenseTypeLabel }}
-          </span>
-          <span v-else class="badge inactive" @click="showLicenseModal = true">未激活</span>
-        </div>
+        <span class="badge ready">开源免费版</span>
       </div>
     </header>
 
@@ -304,82 +215,7 @@ function startTrial() {
       </aside>
     </main>
 
-    <!-- License Modal -->
-    <div v-if="showLicenseModal" class="modal-overlay" @click.self="showLicenseModal = false">
-      <div class="modal-content license-modal">
-        <h3>🎯 img2easy Pro 许可证</h3>
-        
-        <!-- 试用状态 -->
-        <div v-if="licenseManager.loadLicense()?.type === 'trial'" class="license-info">
-          <p class="trial-badge">⏳ 试用中 — 剩余 {{ trialDaysLeft }} 天</p>
-        </div>
-        
-        <!-- 已激活状态 -->
-        <div v-else-if="licenseManager.isValid()" class="license-info">
-          <p class="success-badge">✅ 已激活 — {{ licenseTypeLabel }}</p>
-          <p class="license-detail">密钥: {{ maskLicenseKey(licenseManager.loadLicense()?.key || '') }}</p>
-        </div>
-        
-        <!-- 未激活状态 -->
-        <div v-else class="license-info">
-          <p class="license-intro">输入许可证密钥激活完整功能，或开始7天免费试用。</p>
-        </div>
-        
-        <!-- 定价方案 -->
-        <div class="pricing-plans">
-          <div class="plan">
-            <h4>试用版</h4>
-            <p class="plan-price">免费</p>
-            <ul>
-              <li>✓ 自动校正</li>
-              <li>✓ 自动去污</li>
-              <li>✗ 批量处理</li>
-              <li>✗ 导出报告</li>
-            </ul>
-            <button v-if="!licenseManager.isValid()" @click="startTrial()" class="trial-btn">开始试用</button>
-          </div>
-          <div class="plan recommended">
-            <div class="recommend-badge">推荐</div>
-            <h4>标准版</h4>
-            <p class="plan-price">¥199<span>/永久</span></p>
-            <ul>
-              <li>✓ 全部基础功能</li>
-              <li>✓ 批量处理</li>
-              <li>✓ 导出 PDF/Excel</li>
-              <li>✓ 处理历史</li>
-            </ul>
-          </div>
-          <div class="plan">
-            <h4>专业版</h4>
-            <p class="plan-price">¥399<span>/永久</span></p>
-            <ul>
-              <li>✓ 标准版全部功能</li>
-              <li>✓ 优先技术支持</li>
-              <li>✓ 未来版本升级</li>
-              <li>✓ 多设备授权(3台)</li>
-            </ul>
-          </div>
-        </div>
-        
-        <!-- 激活输入 -->
-        <div v-if="!licenseManager.isValid()" class="activate-section">
-          <p v-if="licenseStatus" :class="licenseStatus.type">{{ licenseStatus.message }}</p>
-          <input
-            v-model="licenseKey"
-            placeholder="输入许可证密钥 (XXXX-XXXX-XXXX-XXXX)"
-            maxlength="19"
-            class="license-input"
-          />
-          <div class="modal-actions">
-            <button @click="activateLicense()" class="primary-btn">激活</button>
-            <button @click="showLicenseModal = false">关闭</button>
-          </div>
-        </div>
-        <div v-else class="modal-actions">
-          <button @click="showLicenseModal = false">关闭</button>
-        </div>
-      </div>
-    </div>
+
 
     <!-- History Panel -->
     <div v-if="showHistoryPanel" class="modal-overlay" @click.self="closeHistory()">
@@ -856,173 +692,5 @@ function startTrial() {
   color: #adb5bd;
   font-size: 13px;
 }
-/* License modal enhanced styles */
-.license-modal {
-  width: 720px;
-  max-width: 95vw;
-}
 
-.license-info {
-  text-align: center;
-  margin-bottom: 16px;
-}
-
-.trial-badge {
-  background: #fef3c7;
-  color: #92400e;
-  padding: 8px 16px;
-  border-radius: 20px;
-  display: inline-block;
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.success-badge {
-  background: #d1fae5;
-  color: #065f46;
-  padding: 8px 16px;
-  border-radius: 20px;
-  display: inline-block;
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.license-intro {
-  color: #6b7280;
-  font-size: 13px;
-}
-
-.license-detail {
-  font-size: 12px;
-  color: #9ca3af;
-  margin-top: 4px;
-}
-
-.pricing-plans {
-  display: flex;
-  gap: 12px;
-  margin: 16px 0;
-}
-
-.plan {
-  flex: 1;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 16px;
-  text-align: center;
-  position: relative;
-}
-
-.plan.recommended {
-  border-color: #2563eb;
-  background: #eff6ff;
-}
-
-.recommend-badge {
-  position: absolute;
-  top: -10px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #2563eb;
-  color: #fff;
-  font-size: 11px;
-  padding: 2px 10px;
-  border-radius: 10px;
-}
-
-.plan h4 {
-  margin: 0 0 8px 0;
-  font-size: 14px;
-}
-
-.plan-price {
-  font-size: 20px;
-  font-weight: 700;
-  color: #1f2937;
-  margin: 0 0 12px 0;
-}
-
-.plan-price span {
-  font-size: 12px;
-  font-weight: 400;
-  color: #6b7280;
-}
-
-.plan ul {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 12px 0;
-  text-align: left;
-}
-
-.plan li {
-  font-size: 12px;
-  color: #4b5563;
-  padding: 3px 0;
-}
-
-.trial-btn {
-  background: #f59e0b;
-  color: #fff;
-  border: none;
-  padding: 6px 14px;
-  border-radius: 4px;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.trial-btn:hover {
-  background: #d97706;
-}
-
-.activate-section {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid #e5e7eb;
-}
-
-.license-input {
-  text-align: center;
-  font-family: monospace;
-  letter-spacing: 2px;
-}
-
-.primary-btn {
-  background: #2563eb;
-  color: #fff;
-  border-color: #2563eb;
-}
-
-.primary-btn:hover {
-  background: #1d4ed8;
-}
-
-/* Header license status */
-.license-status {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.license-status .badge {
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 10px;
-  cursor: pointer;
-}
-
-.license-status .badge.trial {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.license-status .badge.active {
-  background: #d1fae5;
-  color: #065f46;
-}
-
-.license-status .badge.inactive {
-  background: #fee2e2;
-  color: #991b1b;
-}
 </style>

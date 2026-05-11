@@ -2,7 +2,12 @@
  * 批量处理队列管理器
  * 支持串行/并行处理，进度跟踪，错误处理
  */
-import { ImageProcessor, AngleCorrector, BorderRemover, DocumentCleaner, EdgeCleaner } from './'
+import type { CvMat } from '../types/opencv'
+import { ImageProcessor } from './imageProcessor'
+import { AngleCorrector } from './angleCorrector'
+import { BorderRemover } from './borderRemover'
+import { DocumentCleaner } from './documentCleaner'
+import { EdgeCleaner } from './edgeCleaner'
 
 export type ProcessStep = 'rotate180' | 'rotateLeft' | 'rotateRight' | 'skew' | 'crop' | 'autoCorrect' | 'autoRemoveBorder' | 'autoClean' | 'edgeClean'
 
@@ -31,149 +36,211 @@ export class BatchProcessor {
   private edgeCleaner = new EdgeCleaner()
 
   private queue: BatchTask[] = []
-  private running = false
-  private aborted = false
-
-  async process(
-    mats: Map<string, { mat: any; url: string }>,
-    tasks: BatchTask[],
-    options: BatchOptions
-  ): Promise<BatchTask[]> {
-    this.queue = [...tasks]
-    this.running = true
-    this.aborted = false
-
-    if (options.parallel) {
-      await this.runParallel(mats, options)
-    } else {
-      await this.runSerial(mats, options)
-    }
-
-    this.running = false
-    return this.queue
+  private processing = false
+  private completed = 0
+  private total = 0
+  private options: BatchOptions = {
+    parallel: false,
+    maxConcurrency: 1
   }
 
-  private async runSerial(
-    mats: Map<string, { mat: any; url: string }>,
-    options: BatchOptions
-  ): Promise<void> {
-    for (let i = 0; i < this.queue.length; i++) {
-      if (this.aborted) break
-      const task = this.queue[i]
-      try {
-        await this.executeTask(task, mats)
-        options.onProgress?.(i + 1, this.queue.length)
-      } catch (err) {
-        task.status = 'error'
-        task.error = err instanceof Error ? err.message : String(err)
-        options.onError?.(task, err as Error)
-      }
-    }
+  /**
+   * 设置处理选项
+   */
+  setOptions(options: Partial<BatchOptions>): void {
+    this.options = { ...this.options, ...options }
   }
 
-  private async runParallel(
-    mats: Map<string, { mat: any; url: string }>,
-    options: BatchOptions
-  ): Promise<void> {
-    const concurrency = options.maxConcurrency || 2
-    let index = 0
-    let completed = 0
-
-    const worker = async () => {
-      while (index < this.queue.length && !this.aborted) {
-        const i = index++
-        const task = this.queue[i]
-        try {
-          await this.executeTask(task, mats)
-          completed++
-          options.onProgress?.(completed, this.queue.length)
-        } catch (err) {
-          task.status = 'error'
-          task.error = err instanceof Error ? err.message : String(err)
-          options.onError?.(task, err as Error)
-        }
-      }
-    }
-
-    const workers: Promise<void>[] = []
-    for (let i = 0; i < concurrency; i++) {
-      workers.push(worker())
-    }
-    await Promise.all(workers)
+  /**
+   * 添加任务到队列
+   */
+  addTask(task: Omit<BatchTask, 'status'>): BatchTask {
+    const fullTask: BatchTask = { ...task, status: 'pending' }
+    this.queue.push(fullTask)
+    return fullTask
   }
 
-  private async executeTask(
-    task: BatchTask,
-    mats: Map<string, { mat: any; url: string }>
-  ): Promise<void> {
-    task.status = 'processing'
-    const state = mats.get(task.imageId)
-    if (!state) {
-      throw new Error(`Image ${task.imageId} not found`)
-    }
-
-    let currentMat = state.mat.clone()
-
-    for (const step of task.steps) {
-      if (this.aborted) break
-      currentMat = await this.applyStep(step, currentMat, task)
-    }
-
-    // Convert result to URL
-    const canvas = document.createElement('canvas')
-    canvas.width = currentMat.cols
-    canvas.height = currentMat.rows
-    const cv = (window as any).cv
-    cv.imshow(canvas, currentMat)
-    task.resultUrl = canvas.toDataURL('image/png')
-    task.status = 'done'
-
-    // Update the mat in the map
-    state.mat.delete()
-    state.mat = currentMat
+  /**
+   * 添加多个任务
+   */
+  addTasks(tasks: Omit<BatchTask, 'status'>[]): BatchTask[] {
+    return tasks.map(task => this.addTask(task))
   }
 
-  private async applyStep(step: ProcessStep, mat: any, _task: BatchTask): Promise<any> {
+  /**
+   * 清空队列
+   */
+  clearQueue(): void {
+    this.queue = []
+    this.processing = false
+    this.completed = 0
+    this.total = 0
+  }
+
+  /**
+   * 获取队列状态
+   */
+  getQueueStatus(): { pending: number; processing: number; done: number; error: number } {
+    const pending = this.queue.filter(t => t.status === 'pending').length
+    const processing = this.queue.filter(t => t.status === 'processing').length
+    const done = this.queue.filter(t => t.status === 'done').length
+    const error = this.queue.filter(t => t.status === 'error').length
+    return { pending, processing, done, error }
+  }
+
+  /**
+   * 处理单个步骤
+   */
+  processStep(src: CvMat, step: ProcessStep, params?: Record<string, unknown>): CvMat {
     switch (step) {
       case 'rotate180':
-        return this.imageProcessor.rotate(mat, 180)
+        return this.imageProcessor.rotate(src, 180)
       case 'rotateLeft':
-        return this.imageProcessor.rotate(mat, -90)
+        return this.imageProcessor.rotate(src, -90)
       case 'rotateRight':
-        return this.imageProcessor.rotate(mat, 90)
-      case 'skew': {
-        // Skew angle should be passed via task options or store
-        // Default to 0 for batch (user should set in preview first)
-        return this.imageProcessor.skew(mat, 0)
-      }
-      case 'crop': {
-        // Default center crop for batch
-        const rect = {
-          x: Math.round(mat.cols * 0.05),
-          y: Math.round(mat.rows * 0.05),
-          width: Math.round(mat.cols * 0.9),
-          height: Math.round(mat.rows * 0.9)
-        }
-        return this.imageProcessor.crop(mat, rect)
-      }
+        return this.imageProcessor.rotate(src, 90)
+      case 'skew':
+        return this.imageProcessor.skew(src, (params?.angle as number) || 0)
+      case 'crop':
+        return this.imageProcessor.crop(src, (params?.rect as { x: number; y: number; width: number; height: number }) || { x: 0, y: 0, width: src.cols, height: src.rows })
       case 'autoCorrect':
-        return this.angleCorrector.correct(mat)
+        return this.angleCorrector.correct(src)
       case 'autoRemoveBorder':
-        return this.borderRemover.removeBorder(mat)
+        return this.borderRemover.remove(src)
       case 'autoClean':
-        return this.documentCleaner.clean(mat)
+        return this.documentCleaner.clean(src)
       case 'edgeClean':
-        return this.edgeCleaner.clean(mat)
+        return this.edgeCleaner.clean(src)
       default:
-        return mat.clone()
+        return src.clone()
     }
   }
 
-  abort(): void {
-    this.aborted = true
+  /**
+   * 处理队列
+   * @param images 图像映射表
+   * @param options 处理选项（可选，覆盖默认选项）
+   */
+  async process(images: Map<string, CvMat>, options?: Partial<BatchOptions>): Promise<Map<string, CvMat>> {
+    if (options) {
+      this.setOptions(options)
+    }
+    if (this.options.parallel) {
+      return this.processParallel(images)
+    }
+    return this.processSerial(images)
   }
 
-  isRunning(): boolean {
-    return this.running
+  /**
+   * 并行处理队列
+   */
+  async processParallel(images: Map<string, CvMat>): Promise<Map<string, CvMat>> {
+    const results = new Map<string, CvMat>()
+    this.processing = true
+    this.completed = 0
+    this.total = this.queue.length
+
+    const pendingTasks = this.queue.filter(t => t.status === 'pending')
+    const concurrency = this.options.maxConcurrency || 1
+    const batches: BatchTask[][] = []
+
+    for (let i = 0; i < pendingTasks.length; i += concurrency) {
+      batches.push(pendingTasks.slice(i, i + concurrency))
+    }
+
+    for (const batch of batches) {
+      await Promise.all(
+        batch.map(async (task) => {
+          task.status = 'processing'
+          try {
+            const src = images.get(task.imageId)
+            if (!src) {
+              throw new Error(`Image not found: ${task.imageId}`)
+            }
+
+            let result = src.clone()
+            for (const step of task.steps) {
+              const processed = this.processStep(result, step)
+              if (processed !== result) {
+                this.imageProcessor.deleteMat(result)
+              }
+              result = processed
+            }
+
+            results.set(task.imageId, result)
+            task.status = 'done'
+            this.completed++
+            this.options.onProgress?.(this.completed, this.total)
+            this.options.onTaskComplete?.(task)
+          } catch (error) {
+            task.status = 'error'
+            task.error = error instanceof Error ? error.message : String(error)
+            this.options.onError?.(task, error instanceof Error ? error : new Error(String(error)))
+          }
+        })
+      )
+    }
+
+    this.processing = false
+    return results
+  }
+
+  /**
+   * 串行处理队列
+   */
+  async processSerial(images: Map<string, CvMat>): Promise<Map<string, CvMat>> {
+    const results = new Map<string, CvMat>()
+    this.processing = true
+    this.completed = 0
+    this.total = this.queue.length
+
+    for (const task of this.queue) {
+      if (task.status !== 'pending') continue
+      task.status = 'processing'
+
+      try {
+        const src = images.get(task.imageId)
+        if (!src) {
+          throw new Error(`Image not found: ${task.imageId}`)
+        }
+
+        let result = src.clone()
+        for (const step of task.steps) {
+          const processed = this.processStep(result, step)
+          if (processed !== result) {
+            this.imageProcessor.deleteMat(result)
+          }
+          result = processed
+        }
+
+        results.set(task.imageId, result)
+        task.status = 'done'
+        this.completed++
+        this.options.onProgress?.(this.completed, this.total)
+        this.options.onTaskComplete?.(task)
+      } catch (error) {
+        task.status = 'error'
+        task.error = error instanceof Error ? error.message : String(error)
+        this.options.onError?.(task, error instanceof Error ? error : new Error(String(error)))
+      }
+    }
+
+    this.processing = false
+    return results
+  }
+
+  /**
+   * 是否正在处理
+   */
+  isProcessing(): boolean {
+    return this.processing
+  }
+
+  /**
+   * 获取进度百分比
+   */
+  getProgress(): number {
+    if (this.total === 0) return 0
+    return Math.round((this.completed / this.total) * 100)
   }
 }

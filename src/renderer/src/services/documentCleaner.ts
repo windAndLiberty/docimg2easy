@@ -2,7 +2,17 @@
  * 文档污渍清理器
  * 使用多特征评分系统识别并去除污渍
  */
+import type { CvMat, CvMatVector } from '../types/opencv'
+import { safeDelete } from '../utils/matLifecycle'
 import { ImageProcessor } from './imageProcessor'
+
+export interface StainInfo {
+  contour: CvMat
+  area: number
+  features?: ReturnType<DocumentCleaner['calculateFeatures']>
+  score?: number
+  isLarge: boolean
+}
 
 export class DocumentCleaner extends ImageProcessor {
   minArea = 5
@@ -13,7 +23,7 @@ export class DocumentCleaner extends ImageProcessor {
   edgeMargin = 30
   minAspectRatio = 0.1
 
-  clean(src: any): any {
+  clean(src: CvMat): CvMat {
     if (!src || src.rows === 0 || src.cols === 0) {
       return src.clone()
     }
@@ -24,15 +34,15 @@ export class DocumentCleaner extends ImageProcessor {
     return this.removeStains(src, stains)
   }
 
-  detectStains(src: any): any[] {
-    let gray: any = null
-    let blurred: any = null
-    let binary: any = null
-    let inverted: any = null
-    let cleaned: any = null
-    let kernel: any = null
-    let contours: any = null
-    let hierarchy: any = null
+  detectStains(src: CvMat): StainInfo[] {
+    let gray: CvMat | null = null
+    let blurred: CvMat | null = null
+    let binary: CvMat | null = null
+    let inverted: CvMat | null = null
+    let cleaned: CvMat | null = null
+    let kernel: CvMat | null = null
+    let contours: CvMatVector | null = null
+    let hierarchy: CvMat | null = null
 
     try {
       gray = this.toGray(src)
@@ -49,8 +59,8 @@ export class DocumentCleaner extends ImageProcessor {
       hierarchy = new this.cv.Mat()
       this.cv.findContours(cleaned, contours, hierarchy, this.cv.RETR_EXTERNAL, this.cv.CHAIN_APPROX_SIMPLE)
 
-      const stains: any[] = []
-      const contourArray: any[] = []
+      const stains: StainInfo[] = []
+      const contourArray: CvMat[] = []
       for (let i = 0; i < contours.size(); i++) {
         contourArray.push(contours.get(i))
       }
@@ -87,23 +97,23 @@ export class DocumentCleaner extends ImageProcessor {
       console.error('detectStains error:', error)
       return []
     } finally {
-      if (gray) gray.delete()
-      if (blurred) blurred.delete()
-      if (binary) binary.delete()
-      if (inverted) inverted.delete()
-      if (cleaned) cleaned.delete()
-      if (kernel) kernel.delete()
-      if (contours) contours.delete()
-      if (hierarchy) hierarchy.delete()
+      safeDelete(gray)
+      safeDelete(blurred)
+      safeDelete(binary)
+      safeDelete(inverted)
+      safeDelete(cleaned)
+      safeDelete(kernel)
+      safeDelete(contours)
+      safeDelete(hierarchy)
     }
   }
 
-  calculateFeatures(contour: any, area: number) {
+  calculateFeatures(contour: CvMat, area: number) {
     const rect = this.cv.boundingRect(contour)
     const hull = new this.cv.Mat()
     this.cv.convexHull(contour, hull, false, false)
     const hullArea = this.cv.contourArea(hull)
-    hull.delete()
+    safeDelete(hull)
     const perimeter = this.cv.arcLength(contour, true)
     const circularity = perimeter > 0 ? (4 * Math.PI * area) / (perimeter * perimeter) : 0
     return {
@@ -117,7 +127,7 @@ export class DocumentCleaner extends ImageProcessor {
     }
   }
 
-  calculateStainScore(features: any, area: number): number {
+  calculateStainScore(features: ReturnType<DocumentCleaner['calculateFeatures']>, area: number): number {
     const sizeScore = this.calculateSizeScore(area)
     const aspectRatio = features.aspectRatio
     let aspectPenalty = 1.0
@@ -145,7 +155,7 @@ export class DocumentCleaner extends ImageProcessor {
     return 0.3
   }
 
-  isLikelyPunctuation(contour: any, allContours: any[], contourIdx: number): boolean {
+  isLikelyPunctuation(contour: CvMat, allContours: CvMat[], contourIdx: number): boolean {
     const area = this.cv.contourArea(contour)
     if (area < 15 || area > 80) return false
     const rect = this.cv.boundingRect(contour)
@@ -165,18 +175,18 @@ export class DocumentCleaner extends ImageProcessor {
     return false
   }
 
-  removeStains(src: any, stains: any[]): any {
+  removeStains(src: CvMat, stains: StainInfo[]): CvMat {
     if (stains.length === 0) return src.clone()
-    let dilatedMask: any = null
-    let dst: any = null
-    let smallMask: any = null
-    let largeMask: any = null
-    let kernel: any = null
-    let contourVec: any = null
+    let dilatedMask: CvMat | null = null
+    let dst: CvMat | null = null
+    let smallMask: CvMat | null = null
+    let largeMask: CvMat | null = null
+    let kernel: CvMat | null = null
+    let contourVec: CvMatVector | null = null
 
     try {
-      smallMask = new this.cv.Mat.zeros(src.rows, src.cols, this.cv.CV_8UC1)
-      largeMask = new this.cv.Mat.zeros(src.rows, src.cols, this.cv.CV_8UC1)
+      smallMask = this.cv.zeros(src.rows, src.cols, this.cv.CV_8UC1)
+      largeMask = this.cv.zeros(src.rows, src.cols, this.cv.CV_8UC1)
 
       for (const stain of stains) {
         contourVec = new this.cv.MatVector()
@@ -187,9 +197,9 @@ export class DocumentCleaner extends ImageProcessor {
         } else {
           this.cv.drawContours(smallMask, contourVec, -1, color, -1)
         }
-        contourVec.delete()
+        safeDelete(contourVec)
         contourVec = null
-        stain.contour.delete()
+        safeDelete(stain.contour)
       }
 
       dst = src.clone()
@@ -214,7 +224,7 @@ export class DocumentCleaner extends ImageProcessor {
         dilatedMask = new this.cv.Mat()
         this.cv.dilate(largeMask, dilatedMask, kernel)
 
-        let srcForInpaint = src
+        let srcForInpaint: CvMat = src
         let needConvert = false
         if (src.channels() === 4) {
           srcForInpaint = new this.cv.Mat()
@@ -233,8 +243,8 @@ export class DocumentCleaner extends ImageProcessor {
         } catch (inpaintError) {
           console.error('inpaint error:', inpaintError)
         } finally {
-          tempDst.delete()
-          if (needConvert && srcForInpaint) srcForInpaint.delete()
+          safeDelete(tempDst)
+          if (needConvert) safeDelete(srcForInpaint)
         }
       }
 
@@ -243,11 +253,11 @@ export class DocumentCleaner extends ImageProcessor {
       console.error('removeStains error:', error)
       return src.clone()
     } finally {
-      if (dilatedMask) dilatedMask.delete()
-      if (smallMask) smallMask.delete()
-      if (largeMask) largeMask.delete()
-      if (kernel) kernel.delete()
-      if (contourVec) contourVec.delete()
+      safeDelete(dilatedMask)
+      safeDelete(smallMask)
+      safeDelete(largeMask)
+      safeDelete(kernel)
+      safeDelete(contourVec)
     }
   }
 

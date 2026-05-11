@@ -28,7 +28,7 @@ export class ReportExporter {
   async exportPDF(images: ExportImage[], options: ExportOptions = {}): Promise<Uint8Array> {
     const {
       title = 'img2easy 处理报告',
-      author = 'img2easy Pro',
+      author = 'img2easy',
       includeThumbnails = true,
       pageSize = 'a4',
       orientation = 'portrait'
@@ -83,7 +83,9 @@ export class ReportExporter {
       }
     }
 
-    return doc.output('arraybuffer') as unknown as Uint8Array
+    // jsPDF output returns ArrayBufferLike, need double cast for TypeScript
+    const buffer = doc.output('arraybuffer') as unknown as ArrayBuffer
+    return new Uint8Array(buffer)
   }
 
   /**

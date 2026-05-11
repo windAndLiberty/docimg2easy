@@ -3,6 +3,8 @@
  * 使用霍夫变换检测直线并计算平均角度进行旋转校正
  */
 import { ImageProcessor } from './imageProcessor'
+import type { CvMat } from '../types/opencv'
+import { safeDelete } from '../utils/matLifecycle'
 
 export class AngleCorrector extends ImageProcessor {
   minLineLength = 100
@@ -12,8 +14,10 @@ export class AngleCorrector extends ImageProcessor {
 
   /**
    * 自动校正图像角度
+   * @param src 输入图像
+   * @returns 校正后的图像
    */
-  correct(src: any): any {
+  correct(src: CvMat): CvMat {
     const angle = this.calculateAngle(src)
     if (Math.abs(angle) < 0.1) {
       return src.clone()
@@ -23,20 +27,22 @@ export class AngleCorrector extends ImageProcessor {
 
   /**
    * 计算图像的倾斜角度
+   * @param src 输入图像
+   * @returns 倾斜角度（度）
    */
-  calculateAngle(src: any): number {
+  calculateAngle(src: CvMat): number {
     const gray = this.toGray(src)
     const blurred = this.gaussianBlur(gray, 5)
-    gray.delete()
+    safeDelete(gray)
     const edges = this.canny(blurred, 50, 150)
-    blurred.delete()
+    safeDelete(blurred)
 
     const lines = new this.cv.Mat()
     this.cv.HoughLinesP(edges, lines, 1, Math.PI / 180, this.houghThreshold, this.minLineLength, this.maxLineGap)
-    edges.delete()
+    safeDelete(edges)
 
     if (lines.rows === 0) {
-      lines.delete()
+      safeDelete(lines)
       return 0
     }
 
@@ -56,13 +62,16 @@ export class AngleCorrector extends ImageProcessor {
         }
       }
     }
-    lines.delete()
+    safeDelete(lines)
 
     if (angles.length === 0) return 0
     angles.sort((a, b) => a - b)
     return angles[Math.floor(angles.length / 2)]
   }
 
+  /**
+   * 设置参数
+   */
   setOptions(options: Partial<AngleCorrector>): void {
     Object.assign(this, options)
   }
